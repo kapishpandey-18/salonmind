@@ -1,0 +1,155 @@
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL, STORAGE_KEYS } from '../constants/api';
+import type { ApiError, ApiResponse } from '../types';
+import { logger } from '../utils/logger';
+
+// Create axios instance
+const apiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor - Add auth token to requests
+apiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Log API request
+    logger.apiRequest(
+      config.method?.toUpperCase() || 'GET',
+      config.url || '',
+      config.data
+    );
+    
+    // Store request start time
+    (config as any).requestStartTime = Date.now();
+    
+    return config;
+  },
+  (error: AxiosError) => {
+    logger.error('API Request Error:', error.message);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - Handle responses and errors
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Calculate request duration
+    const duration = Date.now() - ((response.config as any).requestStartTime || Date.now());
+    
+    // Log API response
+    logger.apiResponse(
+      response.config.method?.toUpperCase() || 'GET',
+      response.config.url || '',
+      response.status,
+      duration,
+      response.data
+    );
+    
+    return response;
+  },
+  async (error: AxiosError<ApiError>) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+
+    // Calculate request duration
+    const duration = Date.now() - ((originalRequest as any).requestStartTime || Date.now());
+    
+    // Log error response
+    logger.apiResponse(
+      originalRequest.method?.toUpperCase() || 'GET',
+      originalRequest.url || '',
+      error.response?.status || 0,
+      duration,
+      error.response?.data
+    );
+    
+    logger.error('API Error:', error.message, error.response?.data);
+
+    // Handle 401 Unauthorized - Token expired
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+        
+        if (refreshToken) {
+          // Try to refresh the token
+          const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+            refreshToken,
+          });
+
+          const { token } = response.data.data;
+          localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+
+          // Retry the original request with new token
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
+          
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed - clear auth and redirect to login
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.USER);
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // Format error response
+    const apiError: ApiError = {
+      message: error.response?.data?.message || error.message || 'An error occurred',
+      statusCode: error.response?.status || 500,
+      errors: error.response?.data?.errors,
+    };
+
+    return Promise.reject(apiError);
+  }
+);
+
+// Generic API request helper
+export async function apiRequest<T = any>(
+  config: AxiosRequestConfig
+): Promise<ApiResponse<T>> {
+  try {
+    const response: AxiosResponse<ApiResponse<T>> = await apiClient(config);
+    return response.data;
+  } catch (error) {
+    throw error as ApiError;
+  }
+}
+
+// Helper methods
+export const api = {
+  get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
+    return apiRequest<T>({ ...config, method: 'GET', url });
+  },
+
+  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
+    return apiRequest<T>({ ...config, method: 'POST', url, data });
+  },
+
+  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
+    return apiRequest<T>({ ...config, method: 'PUT', url, data });
+  },
+
+  patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
+    return apiRequest<T>({ ...config, method: 'PATCH', url, data });
+  },
+
+  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
+    return apiRequest<T>({ ...config, method: 'DELETE', url });
+  },
+};
+
+export default apiClient;
