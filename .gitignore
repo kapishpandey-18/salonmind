@@ -1,30 +1,136 @@
-# OS
-.DS_Store
+# Partners app (not ready for deployment)
+partners/
 
-# Node.js
-node_modules
-dist
-build
-coverage
-.cache
-logs
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+**/dist/
+dist-ssr/
+*.local
+
+# Environment Variables
+.env
+.env.local
+.env.production
+.env.development
+**/.env
+**/.env.local
+**/.env.production
+**/.env.development
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# Environment / secrets
-.env
-.env.*local
-.env.local
-.env.production
-.env.development
+# Testing
+coverage/
+.nyc_output/
+**/coverage/
+**/.nyc_output/
 
-# Test artifacts
-playwright-report
-test-results
+# Temporary files
+*.tmp
+*.temp
+.cache/
+**/.cache/
 
-# Misc
-*.pem
-*.p12
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Capacitor
+.capacitor/
+**/.capacitor/
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/build/
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+**/*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Android
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/local.properties
+**/.idea/
+**/*.iml
+**/.externalNativeBuild/
+
+# Package manager lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Documentation - Temporary/Work-in-progress files
+**/DEVELOPMENT_LOG.md
+**/FILES_CREATED_SUMMARY.md
+**/ASSET_REFACTORING_SUMMARY.md
+**/FIGMA_MCP_SETUP_RECAP.md
+**/HEADER_ICON_BEHAVIOR_TEST.md
+**/NEW_SCREENS_IMPLEMENTATION.md
+**/SCREEN_FLOW_GUIDE.md
+**/USER_APP_STRUCTURE.md
+**/QUICK_START_GUIDE.md
+**/README_DOCS.md
+**/*_SUMMARY.md
+**/*_LOG.md
+GITHUB_AUTH_INSTRUCTIONS.md
+GITHUB_PUSH_GUIDE.md
+FOLDER_STRUCTURE_AND_API_ANALYSIS.md
+PROJECT_SUMMARY.md
+WEEKEND_MOBILE_TESTING_PLAN.md
+MOBILE_TESTING_STATUS.md
+ARCHITECTURE_ASSESSMENT.md
+CHECK_USER_IMPLEMENTATION.md
+ANDROID_STUDIO_APK_GUIDE.md
+OTP_SECURITY_ENHANCEMENTS.md
+.github/copilot-instructions.md
+
+# Testing Documentation - Temporary
+**/TESTING_DASHBOARDS.md
+**/TESTING_QUICK_REF.md
+**/TEST_OTP_WITHOUT_TWILIO.md
+**/TWILIO_OTP_SETUP_GUIDE.md
+
+# Utility/Debug Scripts (keep local only)
+**/check-*.js
+**/fix-*.js
+**/seed-*.js
+**/test-*.js
+**/*-test-*.js
+**/*-test.sh
+**/quick-*.sh
+**/run-*.sh
+
+# Keep essential docs:
+# - README.md (all directories)
+# - ASSETS_GUIDE.md (user-app)
+# - DESIGN_SYSTEM.md (user-app)
+# - COMPLETE_FLOW_DOCUMENT.md (user-app)
