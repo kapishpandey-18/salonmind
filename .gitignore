@@ -1,5 +1,7 @@
+
 # Partners app (not ready for deployment)
 partners/
+docs/
 
 # Dependencies
 node_modules/
