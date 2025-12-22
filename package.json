@@ -1,0 +1,15 @@
+{
+  "name": "salonmind-monorepo",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "e2e": "turbo run e2e"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.1"
+  }
+}
