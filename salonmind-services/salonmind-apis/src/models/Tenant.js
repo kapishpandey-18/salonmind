@@ -94,6 +94,13 @@ const tenantSchema = new mongoose.Schema(
       currency: { type: String, default: "INR" },
       timezone: { type: String, default: "Asia/Kolkata" },
     },
+    notifications: {
+      emailNotifications: { type: Boolean, default: true },
+      smsNotifications: { type: Boolean, default: true },
+      appointmentReminders: { type: Boolean, default: true },
+      dailyReports: { type: Boolean, default: true },
+      lowStockAlerts: { type: Boolean, default: true },
+    },
     status: {
       type: String,
       enum: ["PENDING", "ACTIVE"],

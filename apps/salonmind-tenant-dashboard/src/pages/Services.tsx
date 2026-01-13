@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Eye, Pencil, Clock, IndianRupee, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  Eye,
+  IndianRupee,
+  Package,
+  Pencil,
+  Search,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -11,6 +21,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -143,15 +154,16 @@ export default function Services({ activeBranchId }: ServicesPageProps) {
   };
 
   const summary = useMemo(() => {
-    const total = services.length;
+    const total = pagination?.total ?? services.length;
     const active = services.filter((service) => service.isActive !== false).length;
+    const inactive = total - active;
     const avgPrice =
       total > 0
         ? services.reduce((sum, service) => sum + (Number(service.price) || 0), 0) /
           total
         : 0;
-    return { total, active, avgPrice: Math.round(avgPrice) };
-  }, [services]);
+    return { total, active, inactive, avgPrice: Math.round(avgPrice) };
+  }, [services, pagination?.total]);
 
   if (!activeBranchId) {
     return (
@@ -167,26 +179,91 @@ export default function Services({ activeBranchId }: ServicesPageProps) {
       <EntityPageHeader
         title="Services"
         description="Manage the catalog visible to salon owners."
-        searchValue={search}
-        onSearchChange={setSearch}
         onCreate={openCreateModal}
         createLabel="Add Service"
         isCreateDisabled={!activeBranchId}
       />
 
-      <Card>
-        <CardContent className="grid gap-4 py-4 md:grid-cols-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Total Services</p>
-            <p className="text-2xl font-semibold">{summary.total}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-semibold">{summary.active}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Avg. Price</p>
-            <p className="text-2xl font-semibold">₹{summary.avgPrice}</p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Total Services
+                </p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.total}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <Package className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Active</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.active}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Inactive</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.inactive}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <XCircle className="w-5 h-5 text-red-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Avg. Price</p>
+                <div className="text-2xl text-foreground mb-1">
+                  ₹{summary.avgPrice}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <IndianRupee className="w-5 h-5 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-card border-border">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search services..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="pl-10 bg-input-background border-border"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -307,6 +384,11 @@ export default function Services({ activeBranchId }: ServicesPageProps) {
             <DialogTitle>
               {selectedService ? "Edit Service" : "Add Service"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedService
+                ? "Update service details."
+                : "Enter service details."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -393,6 +475,9 @@ export default function Services({ activeBranchId }: ServicesPageProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedService?.name}</DialogTitle>
+            <DialogDescription className="sr-only">
+              Review service details.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 text-sm text-muted-foreground">
             <div>Category: {selectedService?.category || "—"}</div>

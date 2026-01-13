@@ -1,5 +1,6 @@
 const ApiError = require("../../../utils/ApiError");
 const TenantClientProfile = require("../../../models/TenantClientProfile");
+const TenantAppointmentRecord = require("../../../models/TenantAppointmentRecord");
 const { resolveBranchContext } = require("../utils/branchContext");
 const {
   parsePagination,
@@ -153,7 +154,44 @@ async function getClientHistory({ tenantId, clientId }) {
   if (!client) {
     throw ApiError.notFound("Client not found");
   }
-  return [];
+  const appointments = await TenantAppointmentRecord.find({
+    tenant: tenantId,
+    client: clientId,
+    isDeleted: false,
+  })
+    .sort({ startAt: -1 })
+    .populate("staff")
+    .populate("services.service");
+
+  return appointments.map((appointment) => ({
+    id: appointment._id.toString(),
+    startAt: appointment.startAt,
+    endAt: appointment.endAt,
+    status: appointment.status,
+    totalAmount: Number(appointment.totalAmount || appointment.price || 0),
+    staff: appointment.staff
+      ? {
+          id: appointment.staff._id?.toString?.() || appointment.staff.toString(),
+          name:
+            appointment.staff.name ||
+            appointment.staffNameSnapshot ||
+            "Staff",
+        }
+      : null,
+    services: (appointment.services || []).map((serviceItem) => ({
+      id:
+        serviceItem.service?._id?.toString?.() ||
+        serviceItem.service?.toString?.(),
+      name:
+        serviceItem.name ||
+        serviceItem.service?.name ||
+        appointment.serviceNameSnapshot ||
+        "Service",
+      price: typeof serviceItem.price === "number" ? serviceItem.price : 0,
+      duration:
+        typeof serviceItem.duration === "number" ? serviceItem.duration : undefined,
+    })),
+  }));
 }
 
 async function getClient({ tenantId, clientId }) {

@@ -42,7 +42,11 @@ export function EntityPageHeader({
           </div>
         )}
         {typeof onCreate === "function" && (
-          <Button onClick={onCreate} disabled={isCreateDisabled} className="h-12 rounded-xl text-base px-6">
+          <Button
+            onClick={onCreate}
+            disabled={isCreateDisabled}
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 whitespace-nowrap"
+          >
             <Plus className="mr-2 h-5 w-5" />
             {createLabel}
           </Button>

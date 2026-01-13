@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -50,6 +50,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import { ownerProductsService } from "../services/owner/products.service";
 
 interface Product {
   id: string;
@@ -62,129 +63,6 @@ interface Product {
   inStock: boolean;
 }
 
-const initialProducts: Product[] = [
-  {
-    id: "1",
-    name: "Keratin Smoothing Treatment",
-    brand: "L'Oréal Professional",
-    category: "haircare",
-    price: 2800,
-    usage: "Hair smoothing and straightening",
-    description: "Professional keratin treatment for frizz-free, smooth hair",
-    inStock: true,
-  },
-  {
-    id: "2",
-    name: "Argan Oil Shampoo",
-    brand: "Moroccanoil",
-    category: "haircare",
-    price: 1200,
-    usage: "Deep cleansing and nourishment",
-    description: "Infused with argan oil for shiny, healthy hair",
-    inStock: true,
-  },
-  {
-    id: "3",
-    name: "Permanent Hair Color - Platinum Blonde",
-    brand: "Wella Koleston",
-    category: "haircolor",
-    price: 650,
-    usage: "Full hair coloring",
-    description: "Long-lasting professional hair color with 100% gray coverage",
-    inStock: true,
-  },
-  {
-    id: "4",
-    name: "Cream Developer 20 Vol",
-    brand: "Wella Professionals",
-    category: "haircolor",
-    price: 380,
-    usage: "Hair color activation",
-    description: "Professional cream developer for optimal color results",
-    inStock: true,
-  },
-  {
-    id: "5",
-    name: "Strong Hold Hair Gel",
-    brand: "Got2b",
-    category: "styling",
-    price: 450,
-    usage: "Styling and hold",
-    description: "Extra strong hold gel for all-day styling",
-    inStock: true,
-  },
-  {
-    id: "6",
-    name: "Texture Spray",
-    brand: "Schwarzkopf",
-    category: "styling",
-    price: 890,
-    usage: "Volume and texture",
-    description: "Creates natural texture and volume",
-    inStock: false,
-  },
-  {
-    id: "7",
-    name: "Anti-Aging Facial Serum",
-    brand: "Kaya",
-    category: "skincare",
-    price: 1850,
-    usage: "Face treatments",
-    description: "Reduces fine lines and brightens complexion",
-    inStock: true,
-  },
-  {
-    id: "8",
-    name: "Charcoal Face Mask",
-    brand: "Mamaearth",
-    category: "skincare",
-    price: 599,
-    usage: "Deep cleansing facial",
-    description: "Detoxifies and purifies skin",
-    inStock: true,
-  },
-  {
-    id: "9",
-    name: "Gel Nail Polish - Ruby Red",
-    brand: "OPI",
-    category: "nails",
-    price: 720,
-    usage: "Gel manicure",
-    description: "Long-lasting gel polish with brilliant shine",
-    inStock: true,
-  },
-  {
-    id: "10",
-    name: "Cuticle Oil",
-    brand: "Sally Hansen",
-    category: "nails",
-    price: 350,
-    usage: "Nail care",
-    description: "Nourishes and conditions cuticles",
-    inStock: true,
-  },
-  {
-    id: "11",
-    name: "Professional Hair Cutting Scissors",
-    brand: "Joewell",
-    category: "tools",
-    price: 4500,
-    usage: "Hair cutting",
-    description: "Japanese steel professional cutting shears",
-    inStock: true,
-  },
-  {
-    id: "12",
-    name: "Ionic Hair Dryer",
-    brand: "Philips",
-    category: "tools",
-    price: 3200,
-    usage: "Hair drying",
-    description: "Fast drying with ionic technology for less frizz",
-    inStock: true,
-  },
-];
-
 const categories = [
   { id: "all", name: "All Products", icon: Sparkles },
   { id: "haircare", name: "Hair Care", icon: Droplet },
@@ -196,7 +74,8 @@ const categories = [
 ];
 
 export default function Products() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -211,6 +90,32 @@ export default function Products() {
     inStock: true,
   });
 
+  const loadProducts = async () => {
+    try {
+      const response = await ownerProductsService.list();
+      const items = response.items ?? [];
+      setProducts(
+        items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          brand: item.brand ?? "",
+          category: item.category ?? "",
+          price: item.price ?? 0,
+          usage: item.usage ?? "",
+          description: item.description ?? "",
+          inStock: item.inStock ?? true,
+        }))
+      );
+      setTotalProducts(response.pagination?.total ?? items.length);
+    } catch (error) {
+      console.error("Failed to load products", error);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
   const filteredProducts = products.filter((product) => {
     const matchesCategory =
       selectedCategory === "all" || product.category === selectedCategory;
@@ -220,19 +125,21 @@ export default function Products() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleAddProduct = () => {
-    if (newProduct.name && newProduct.brand) {
-      const product: Product = {
-        id: Date.now().toString(),
-        name: newProduct.name || "",
-        brand: newProduct.brand || "",
+  const handleAddProduct = async () => {
+    if (!newProduct.name || !newProduct.brand) {
+      return;
+    }
+    try {
+      await ownerProductsService.create({
+        name: newProduct.name,
+        brand: newProduct.brand,
         category: newProduct.category || "haircare",
         price: newProduct.price || 0,
         usage: newProduct.usage || "",
         description: newProduct.description || "",
         inStock: newProduct.inStock ?? true,
-      };
-      setProducts([...products, product]);
+      });
+      await loadProducts();
       setNewProduct({
         name: "",
         brand: "",
@@ -243,20 +150,38 @@ export default function Products() {
         inStock: true,
       });
       setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to create product", error);
     }
   };
 
-  const handleUpdateProduct = () => {
+  const handleUpdateProduct = async () => {
     if (editingProduct) {
-      setProducts(
-        products.map((p) => (p.id === editingProduct.id ? editingProduct : p))
-      );
-      setEditingProduct(null);
+      try {
+        await ownerProductsService.update(editingProduct.id, {
+          name: editingProduct.name,
+          brand: editingProduct.brand,
+          category: editingProduct.category,
+          price: editingProduct.price,
+          usage: editingProduct.usage,
+          description: editingProduct.description,
+          inStock: editingProduct.inStock,
+        });
+        await loadProducts();
+        setEditingProduct(null);
+      } catch (error) {
+        console.error("Failed to update product", error);
+      }
     }
   };
 
-  const handleDeleteProduct = (id: string) => {
-    setProducts(products.filter((p) => p.id !== id));
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      await ownerProductsService.remove(id);
+      await loadProducts();
+    } catch (error) {
+      console.error("Failed to delete product", error);
+    }
   };
 
   const getCategoryIcon = (categoryId: string) => {
@@ -265,7 +190,7 @@ export default function Products() {
   };
 
   const stats = {
-    total: products.length,
+    total: totalProducts || products.length,
     inStock: products.filter((p) => p.inStock).length,
     outOfStock: products.filter((p) => !p.inStock).length,
     categories: new Set(products.map((p) => p.category)).size,
@@ -517,14 +442,16 @@ export default function Products() {
         <CardContent className="p-6">
           <div className="space-y-6">
             {/* Search Bar */}
-            <div className="relative max-w-xl">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search products or brands..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search products or brands..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-input-background border-border"
+                />
+              </div>
             </div>
 
             {/* Categories Tabs */}

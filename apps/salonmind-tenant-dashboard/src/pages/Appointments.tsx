@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Calendar, Clock, Eye, Pencil, Trash2 } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Eye,
+  Pencil,
+  Search,
+  Trash2,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -11,6 +19,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -193,6 +202,22 @@ export default function Appointments({ activeBranchId }: AppointmentsPageProps) 
     }));
   };
 
+  const summary = useMemo(() => {
+    const counts = {
+      total: pagination?.total ?? appointments.length,
+      pending: 0,
+      confirmed: 0,
+      completed: 0,
+    };
+    appointments.forEach((appointment) => {
+      const status = appointment.status || "pending";
+      if (status === "pending") counts.pending += 1;
+      if (status === "confirmed") counts.confirmed += 1;
+      if (status === "completed") counts.completed += 1;
+    });
+    return counts;
+  }, [appointments, pagination?.total]);
+
   const serviceLookup = useMemo(() => {
     const services = serviceOptions?.items ?? [];
     return services.reduce<Record<string, OwnerService>>((acc, service) => {
@@ -231,34 +256,112 @@ export default function Appointments({ activeBranchId }: AppointmentsPageProps) 
       <EntityPageHeader
         title="Appointments"
         description="Review bookings for the selected branch."
-        searchValue={search}
-        onSearchChange={setSearch}
         onCreate={openCreateModal}
         createLabel="Create Appointment"
         isCreateDisabled={!activeBranchId}
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Label className="text-sm">Status</Label>
-        <Select
-          value={statusFilter || "all"}
-          onValueChange={(value) =>
-            setStatusFilter(value === "all" ? undefined : value)
-          }
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            {STATUS_OPTIONS.map((status) => (
-              <SelectItem key={status} value={status}>
-                {status}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Total Appointments
+                </p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.total}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Pending</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.pending}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Confirmed</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.confirmed}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Completed</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.completed}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card className="bg-card border-border">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search appointments..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="pl-10 bg-input-background border-border"
+              />
+            </div>
+            <Select
+              value={statusFilter || "all"}
+              onValueChange={(value) =>
+                setStatusFilter(value === "all" ? undefined : value)
+              }
+            >
+              <SelectTrigger className="w-full md:w-48 bg-input-background border-border">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -391,6 +494,11 @@ export default function Appointments({ activeBranchId }: AppointmentsPageProps) 
             <DialogTitle>
               {selectedAppointment ? "Edit Appointment" : "New Appointment"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedAppointment
+                ? "Update appointment details."
+                : "Enter appointment details."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
@@ -543,6 +651,9 @@ export default function Appointments({ activeBranchId }: AppointmentsPageProps) 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Appointment Details</DialogTitle>
+            <DialogDescription className="sr-only">
+              Review appointment details.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 text-sm text-muted-foreground">
             <div>

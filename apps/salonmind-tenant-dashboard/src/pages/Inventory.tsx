@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Package, Plus, Search, AlertTriangle, TrendingDown, TrendingUp, Box, Edit, Trash2, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
+import { ownerInventoryService } from '../services/owner/inventory.service';
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   category: string;
   currentStock: number;
@@ -22,22 +23,9 @@ interface Product {
   lastRestocked: string;
 }
 
-const inventoryData: Product[] = [
-  { id: 1, name: 'Shampoo Professional', category: 'Hair Care', currentStock: 45, minStock: 20, maxStock: 100, unit: 'bottles', price: 24.99, supplier: 'Beauty Supply Co', lastRestocked: '2025-11-01' },
-  { id: 2, name: 'Conditioner Premium', category: 'Hair Care', currentStock: 38, minStock: 20, maxStock: 100, unit: 'bottles', price: 26.99, supplier: 'Beauty Supply Co', lastRestocked: '2025-11-01' },
-  { id: 3, name: 'Hair Color - Black', category: 'Coloring', currentStock: 12, minStock: 15, maxStock: 50, unit: 'tubes', price: 18.50, supplier: 'ColorPro Inc', lastRestocked: '2025-10-28' },
-  { id: 4, name: 'Hair Color - Blonde', category: 'Coloring', currentStock: 8, minStock: 15, maxStock: 50, unit: 'tubes', price: 18.50, supplier: 'ColorPro Inc', lastRestocked: '2025-10-28' },
-  { id: 5, name: 'Developer 20 Vol', category: 'Coloring', currentStock: 25, minStock: 10, maxStock: 60, unit: 'bottles', price: 12.99, supplier: 'ColorPro Inc', lastRestocked: '2025-11-03' },
-  { id: 6, name: 'Hair Gel Strong Hold', category: 'Styling', currentStock: 32, minStock: 15, maxStock: 80, unit: 'bottles', price: 15.99, supplier: 'Style Masters', lastRestocked: '2025-11-05' },
-  { id: 7, name: 'Hairspray Flexible', category: 'Styling', currentStock: 28, minStock: 15, maxStock: 80, unit: 'bottles', price: 14.99, supplier: 'Style Masters', lastRestocked: '2025-11-05' },
-  { id: 8, name: 'Deep Conditioning Mask', category: 'Treatment', currentStock: 5, minStock: 10, maxStock: 40, unit: 'jars', price: 32.99, supplier: 'Premium Care Ltd', lastRestocked: '2025-10-20' },
-  { id: 9, name: 'Hair Serum Argan Oil', category: 'Treatment', currentStock: 18, minStock: 12, maxStock: 50, unit: 'bottles', price: 28.99, supplier: 'Premium Care Ltd', lastRestocked: '2025-10-30' },
-  { id: 10, name: 'Disposable Capes', category: 'Supplies', currentStock: 150, minStock: 100, maxStock: 500, unit: 'pieces', price: 0.50, supplier: 'Salon Essentials', lastRestocked: '2025-11-02' },
-  { id: 11, name: 'Gloves (Box of 100)', category: 'Supplies', currentStock: 8, minStock: 10, maxStock: 30, unit: 'boxes', price: 12.99, supplier: 'Salon Essentials', lastRestocked: '2025-10-25' },
-  { id: 12, name: 'Towels Professional', category: 'Supplies', currentStock: 45, minStock: 30, maxStock: 100, unit: 'pieces', price: 8.99, supplier: 'Salon Essentials', lastRestocked: '2025-11-04' },
-];
-
 export default function Inventory() {
+  const [inventoryItems, setInventoryItems] = useState<Product[]>([]);
+  const [totalInventory, setTotalInventory] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [addProductOpen, setAddProductOpen] = useState(false);
@@ -65,7 +53,35 @@ export default function Inventory() {
     supplier: ''
   });
 
-  const filteredProducts = inventoryData.filter(product => {
+  const loadInventory = async () => {
+    try {
+      const response = await ownerInventoryService.list();
+      const items = response.items ?? [];
+      setInventoryItems(
+        items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          category: item.category || '',
+          currentStock: item.currentStock,
+          minStock: item.minStock,
+          maxStock: item.maxStock,
+          unit: item.unit || '',
+          price: item.price ?? 0,
+          supplier: item.supplier || '',
+          lastRestocked: item.lastRestocked || '',
+        }))
+      );
+      setTotalInventory(response.pagination?.total ?? items.length);
+    } catch (error) {
+      console.error('Failed to load inventory', error);
+    }
+  };
+
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
+  const filteredProducts = inventoryItems.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.supplier.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
@@ -83,9 +99,9 @@ export default function Inventory() {
     }
   };
 
-  const lowStockCount = inventoryData.filter(p => p.currentStock <= p.minStock).length;
-  const totalValue = inventoryData.reduce((sum, p) => sum + (p.currentStock * p.price), 0);
-  const totalItems = inventoryData.reduce((sum, p) => sum + p.currentStock, 0);
+  const lowStockCount = inventoryItems.filter(p => p.currentStock <= p.minStock).length;
+  const totalValue = inventoryItems.reduce((sum, p) => sum + (p.currentStock * p.price), 0);
+  const totalItems = inventoryItems.reduce((sum, p) => sum + p.currentStock, 0);
 
   const categories = ['all', 'Hair Care', 'Coloring', 'Styling', 'Treatment', 'Supplies'];
 
@@ -115,7 +131,9 @@ export default function Inventory() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Total Products</p>
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-2xl text-foreground">{inventoryData.length}</span>
+                  <span className="text-2xl text-foreground">
+                    {totalInventory || inventoryItems.length}
+                  </span>
                   <span className="text-xs text-muted-foreground">active items</span>
                 </div>
               </div>
@@ -369,7 +387,7 @@ export default function Inventory() {
               {lowStockCount} product{lowStockCount !== 1 ? 's' : ''} need{lowStockCount === 1 ? 's' : ''} to be restocked
             </p>
             <div className="flex flex-wrap gap-2">
-              {inventoryData
+              {inventoryItems
                 .filter(p => p.currentStock <= p.minStock)
                 .map(product => (
                   <Badge key={product.id} className="bg-red-500/10 text-red-500 border-red-500/20">
@@ -509,9 +527,23 @@ export default function Inventory() {
                   if (newProduct.name && newProduct.category && newProduct.currentStock && 
                       newProduct.minStock && newProduct.maxStock && newProduct.unit && 
                       newProduct.price && newProduct.supplier) {
+                    ownerInventoryService
+                      .create({
+                        name: newProduct.name,
+                        category: newProduct.category,
+                        currentStock: Number(newProduct.currentStock),
+                        minStock: Number(newProduct.minStock),
+                        maxStock: Number(newProduct.maxStock),
+                        unit: newProduct.unit,
+                        price: Number(newProduct.price),
+                        supplier: newProduct.supplier,
+                      })
+                      .then(() => loadInventory())
+                      .catch((error) => {
+                        console.error('Failed to add inventory item', error);
+                      });
                     setAddProductOpen(false);
                     setNewProduct({ name: '', category: '', currentStock: '', minStock: '', maxStock: '', unit: '', price: '', supplier: '' });
-                    // In a real app, this would save to the database
                   }
                 }}
                 disabled={!newProduct.name || !newProduct.category || !newProduct.currentStock || 
@@ -655,11 +687,26 @@ export default function Inventory() {
                   if (editProduct.name && editProduct.category && editProduct.currentStock && 
                       editProduct.minStock && editProduct.maxStock && editProduct.unit && 
                       editProduct.price && editProduct.supplier) {
+                    if (selectedProduct) {
+                      ownerInventoryService
+                        .update(selectedProduct.id, {
+                          name: editProduct.name,
+                          category: editProduct.category,
+                          currentStock: Number(editProduct.currentStock),
+                          minStock: Number(editProduct.minStock),
+                          maxStock: Number(editProduct.maxStock),
+                          unit: editProduct.unit,
+                          price: Number(editProduct.price),
+                          supplier: editProduct.supplier,
+                        })
+                        .then(() => loadInventory())
+                        .catch((error) => {
+                          console.error('Failed to update inventory item', error);
+                        });
+                    }
                     setEditProductOpen(false);
                     setSelectedProduct(null);
                     setEditProduct({ name: '', category: '', currentStock: '', minStock: '', maxStock: '', unit: '', price: '', supplier: '' });
-                    // In a real app, this would update the database
-                    console.log('Product updated:', editProduct);
                   }
                 }}
                 disabled={!editProduct.name || !editProduct.category || !editProduct.currentStock || 
@@ -718,10 +765,16 @@ export default function Inventory() {
                 variant="destructive"
                 className="bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => {
+                  if (selectedProduct) {
+                    ownerInventoryService
+                      .remove(selectedProduct.id)
+                      .then(() => loadInventory())
+                      .catch((error) => {
+                        console.error('Failed to delete inventory item', error);
+                      });
+                  }
                   setDeleteProductOpen(false);
                   setSelectedProduct(null);
-                  // In a real app, this would delete from the database
-                  console.log('Product deleted:', selectedProduct?.name);
                 }}
               >
                 <Trash2 className="w-4 h-4 mr-2" />

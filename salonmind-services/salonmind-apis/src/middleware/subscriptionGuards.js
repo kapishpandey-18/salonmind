@@ -2,6 +2,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const Branch = require("../models/Branch");
 const Tenant = require("../models/Tenant");
+const TenantStaff = require("../models/TenantStaff");
 const {
   getActiveSubscriptionForTenant,
   resolvePlanForTenant,
@@ -53,6 +54,14 @@ const enforcePlanLimits = (resource) =>
       return next();
     }
 
+    const buildLimitError = (message, meta = {}) => {
+      const error = ApiError.forbidden(message);
+      error.code = "PLAN_LIMIT_EXCEEDED";
+      error.errorCode = "PLAN_LIMIT_EXCEEDED";
+      error.meta = meta;
+      return error;
+    };
+
     if (resource === "branch") {
       if (!plan.maxBranches) {
         return next();
@@ -61,9 +70,16 @@ const enforcePlanLimits = (resource) =>
         tenant: req.user.tenant,
         isActive: true,
       });
-      if (activeCount >= plan.maxBranches) {
-        throw ApiError.badRequest(
-          `Plan limit reached. ${plan.planName} supports up to ${plan.maxBranches} branches.`
+      if (activeCount + 1 > plan.maxBranches) {
+        throw buildLimitError(
+          `Plan limit reached. ${plan.planName} supports up to ${plan.maxBranches} branches.`,
+          {
+            resource: "BRANCH",
+            limit: plan.maxBranches,
+            current: activeCount,
+            plan: plan.planCode,
+            upgradeHint: "UPGRADE_PLAN_OR_ADDON",
+          }
         );
       }
     }
@@ -72,19 +88,37 @@ const enforcePlanLimits = (resource) =>
       if (!plan.maxEmployees) {
         return next();
       }
-      const staffPayload = Array.isArray(req.body.staff)
+      const incomingCount = Array.isArray(req.body.staff)
         ? req.body.staff.length
-        : null;
-      if (staffPayload && staffPayload > plan.maxEmployees) {
-        throw ApiError.badRequest(
-          `Plan limit reached. ${plan.planName} supports up to ${plan.maxEmployees} staff members.`
+        : 1;
+      const currentCount = await TenantStaff.countDocuments({
+        tenant: req.user.tenant,
+        isDeleted: false,
+      });
+      if (currentCount + incomingCount > plan.maxEmployees) {
+        throw buildLimitError(
+          `Your current plan allows up to ${plan.maxEmployees} staff members.`,
+          {
+            resource: "STAFF",
+            limit: plan.maxEmployees,
+            current: currentCount,
+            plan: plan.planCode,
+            upgradeHint: "UPGRADE_PLAN_OR_ADDON",
+          }
         );
       }
-      if (!staffPayload) {
+      if (Array.isArray(req.body.staff)) {
         const tenant = await Tenant.findById(req.user.tenant).select("staff");
         if (tenant && tenant.staff.length > plan.maxEmployees) {
-          throw ApiError.badRequest(
-            `Plan limit reached. ${plan.planName} supports up to ${plan.maxEmployees} staff members.`
+          throw buildLimitError(
+            `Your current plan allows up to ${plan.maxEmployees} staff members.`,
+            {
+              resource: "STAFF",
+              limit: plan.maxEmployees,
+              current: tenant.staff.length,
+              plan: plan.planCode,
+              upgradeHint: "UPGRADE_PLAN_OR_ADDON",
+            }
           );
         }
       }

@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Eye, Pencil, Phone, Trash2 } from "lucide-react";
+import {
+  Eye,
+  Pencil,
+  Phone,
+  Search,
+  Star,
+  Trash2,
+  UserCheck,
+  UserX,
+  Users,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -11,6 +21,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -20,6 +31,13 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Switch } from "../components/ui/switch";
 import { Skeleton } from "../components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { EntityPageHeader } from "../components/EntityPageHeader";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -32,6 +50,7 @@ import type { OwnerStaff } from "../types/owner";
 
 interface StaffPageProps {
   activeBranchId: string | null;
+  onOpenDetails?: (staffId: string) => void;
 }
 
 const INITIAL_FORM = {
@@ -41,9 +60,13 @@ const INITIAL_FORM = {
   phone: "",
   notes: "",
   isActive: true,
+  compensation: {
+    monthlySalary: 0,
+    commissionPercent: 0,
+  },
 };
 
-export default function Staff({ activeBranchId }: StaffPageProps) {
+export default function Staff({ activeBranchId, onOpenDetails }: StaffPageProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -88,6 +111,10 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
       phone: member.phone || "",
       notes: member.notes || "",
       isActive: member.isActive ?? member.status !== "off",
+      compensation: {
+        monthlySalary: member.compensation?.monthlySalary ?? 0,
+        commissionPercent: member.compensation?.commissionPercent ?? 0,
+      },
     });
     setIsFormOpen(true);
   };
@@ -95,6 +122,14 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
   const openViewModal = (member: OwnerStaff) => {
     setSelectedStaff(member);
     setIsViewOpen(true);
+  };
+
+  const openDetailsPage = (member: OwnerStaff) => {
+    if (onOpenDetails) {
+      onOpenDetails(member._id);
+      return;
+    }
+    openViewModal(member);
   };
 
   const handleSubmit = async () => {
@@ -118,6 +153,20 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
       }
       setIsFormOpen(false);
     } catch (error: any) {
+      if (error?.statusCode === 403 && error?.code === "PLAN_LIMIT_EXCEEDED") {
+        const limit =
+          typeof error?.meta?.limit === "number" ? error.meta.limit : null;
+        const baseMessage =
+          limit !== null
+            ? `Your current plan allows up to ${limit} staff members. Upgrade your plan or purchase an add-on to add more.`
+            : error?.message || "Unable to save staff member";
+        const secondary =
+          limit !== null && error?.meta?.upgradeHint
+            ? "Add extra staff for ₹99"
+            : null;
+        toast.error(secondary ? `${baseMessage}\n${secondary}` : baseMessage);
+        return;
+      }
       toast.error(error?.message || "Unable to save staff member");
     }
   };
@@ -141,8 +190,9 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
   };
 
   const summary = useMemo(() => {
-    const total = staff.length;
+    const total = pagination?.total ?? staff.length;
     const active = staff.filter((member) => member.isActive !== false).length;
+    const inactive = total - active;
     const avgRating =
       total > 0
         ? staff.reduce(
@@ -150,8 +200,8 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
             0
           ) / total
         : 0;
-    return { total, active, avgRating: avgRating.toFixed(1) };
-  }, [staff]);
+    return { total, active, inactive, avgRating: avgRating.toFixed(1) };
+  }, [staff, pagination?.total]);
 
   if (!activeBranchId) {
     return (
@@ -167,26 +217,91 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
       <EntityPageHeader
       title="Staff Management"
       description="Search, create, and manage staff for the selected branch."
-      searchValue={search}
-      onSearchChange={setSearch}
       onCreate={openCreateModal}
       createLabel="Add Staff"
       isCreateDisabled={!activeBranchId}
       />
 
-      <Card>
-        <CardContent className="grid gap-4 py-4 md:grid-cols-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Total Members</p>
-            <p className="text-2xl font-semibold">{summary.total}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-semibold">{summary.active}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Avg. Rating</p>
-            <p className="text-2xl font-semibold">{summary.avgRating}</p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Total Members
+                </p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.total}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Active</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.active}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Inactive</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.inactive}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <UserX className="w-5 h-5 text-red-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Avg. Rating</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.avgRating}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <Star className="w-5 h-5 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-card border-border">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search staff..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="pl-10 bg-input-background border-border"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -213,7 +328,7 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {staff.map((member) => (
-            <Card key={member._id}>
+            <Card key={member._id} onDoubleClick={() => openViewModal(member)}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle>{member.name}</CardTitle>
                 <Badge variant={member.isActive ? "default" : "secondary"}>
@@ -243,7 +358,7 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => openViewModal(member)}
+                    onClick={() => openDetailsPage(member)}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -304,6 +419,11 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
             <DialogTitle>
               {selectedStaff ? "Edit Staff" : "Add Staff"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedStaff
+                ? "Update staff member details."
+                : "Enter staff member details."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -356,6 +476,49 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
               />
             </div>
             <div className="space-y-2">
+              <Label>Monthly Salary</Label>
+              <Input
+                type="number"
+                min={0}
+                value={formState.compensation.monthlySalary}
+                onChange={(event) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    compensation: {
+                      ...prev.compensation,
+                      monthlySalary: Number(event.target.value),
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Commission</Label>
+              <Select
+                value={String(formState.compensation.commissionPercent)}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    compensation: {
+                      ...prev.compensation,
+                      commissionPercent: Number(value),
+                    },
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select commission" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">0%</SelectItem>
+                  <SelectItem value="5">5%</SelectItem>
+                  <SelectItem value="10">10%</SelectItem>
+                  <SelectItem value="15">15%</SelectItem>
+                  <SelectItem value="20">20%</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Notes</Label>
               <Input
                 value={formState.notes}
@@ -387,12 +550,23 @@ export default function Staff({ activeBranchId }: StaffPageProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedStaff?.name}</DialogTitle>
+            <DialogDescription className="sr-only">
+              Review staff member details.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 text-sm text-muted-foreground">
             <div>Role: {selectedStaff?.role || "—"}</div>
             <div>Email: {selectedStaff?.email || "—"}</div>
             <div>Phone: {selectedStaff?.phone || "—"}</div>
             <div>Notes: {selectedStaff?.notes || "—"}</div>
+            <div>
+              Monthly Salary:{" "}
+              {selectedStaff?.compensation?.monthlySalary ?? 0}
+            </div>
+            <div>
+              Commission:{" "}
+              {selectedStaff?.compensation?.commissionPercent ?? 0}%
+            </div>
           </div>
         </DialogContent>
       </Dialog>

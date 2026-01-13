@@ -30,6 +30,12 @@ export const API_ENDPOINTS = {
     SERVICES: "/v1/owner/services",
     CLIENTS: "/v1/owner/clients",
     APPOINTMENTS: "/v1/owner/appointments",
+    PRODUCTS: "/v1/owner/products",
+    INVENTORY: "/v1/owner/inventory",
+    REVENUE_SUMMARY: "/v1/owner/revenue/summary",
+    REPORTS_TOP_SERVICES: "/v1/owner/reports/top-services",
+    SETTINGS: "/v1/owner/settings",
+    PLANS: "/v1/owner/plans",
     CONTEXT: "/v1/owner/me/context",
   },
 

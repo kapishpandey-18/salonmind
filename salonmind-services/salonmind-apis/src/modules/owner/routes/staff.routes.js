@@ -4,6 +4,7 @@ const { body } = require("express-validator");
 const { authenticate, restrictToScope } = require("../../../middleware/auth");
 const {
   requireActiveSubscription,
+  enforcePlanLimits,
 } = require("../../../middleware/subscriptionGuards");
 const validate = require("../../../middleware/validate");
 const staffController = require("../controllers/staff.controller");
@@ -14,6 +15,7 @@ router.get("/", staffController.list);
 router.get("/:id", staffController.detail);
 router.post(
   "/",
+  enforcePlanLimits("staff"),
   body("name").isString().notEmpty(),
   body("role").optional().isString(),
   body("email").optional().isEmail(),

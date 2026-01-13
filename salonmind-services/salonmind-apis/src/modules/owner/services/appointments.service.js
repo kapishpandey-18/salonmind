@@ -239,6 +239,7 @@ async function createAppointment({
     price: totalAmount,
     totalAmount,
     status: payload.status || "confirmed",
+    paymentMethod: payload.paymentMethod,
     notes: payload.notes,
     createdBy: userId,
   });
@@ -347,6 +348,10 @@ async function updateAppointment({ tenantId, appointmentId, payload }) {
 
   if (payload.status) {
     appointment.status = payload.status;
+  }
+
+  if (payload.paymentMethod) {
+    appointment.paymentMethod = payload.paymentMethod;
   }
 
   if (typeof payload.notes !== "undefined") {

@@ -91,6 +91,10 @@ const tenantAppointmentSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "completed", "cancelled"],
       default: "pending",
     },
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "card", "upi", "wallet", "other"],
+    },
     notes: String,
     cancellationReason: String,
     isDeleted: {

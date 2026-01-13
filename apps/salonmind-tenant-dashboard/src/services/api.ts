@@ -125,10 +125,18 @@ apiClient.interceptors.response.use(
     }
 
     // Format error response
+    const payload = error.response?.data as any;
+    const errorPayload = payload?.error || {};
     const apiError: ApiError = {
-      message: error.response?.data?.message || error.message || 'An error occurred',
+      message:
+        errorPayload?.message ||
+        payload?.message ||
+        error.message ||
+        "An error occurred",
       statusCode: error.response?.status || 500,
-      errors: error.response?.data?.errors,
+      errors: errorPayload?.details || payload?.errors,
+      code: errorPayload?.code,
+      meta: errorPayload?.meta,
     };
 
     return Promise.reject(apiError);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,6 +8,10 @@ import { Switch } from '../components/ui/switch';
 import { Separator } from '../components/ui/separator';
 import { User, Building2, Bell, Lock, Camera } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
+import { ownerSettingsService } from '../services/owner/settings.service';
+import { ownerPlansService } from '../services/owner/plans.service';
+import { ownerService } from '../services/ownerService';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -21,38 +25,113 @@ const INDIAN_STATES = [
 
 export default function ProfileSettings() {
   const [profileData, setProfileData] = useState({
-    name: 'Priya Sharma',
-    email: 'priya@salonmind.com',
-    phone: '+91 98765 43210',
-    salonName: 'Elegant Beauty Salon',
-    salonAddress: '123, MG Road',
-    salonCity: 'Mumbai',
-    salonState: 'Maharashtra',
-    salonPincode: '400001',
-    salonPhone: '+91 22 1234 5678',
-    salonEmail: 'info@elegantbeauty.com',
+    name: '',
+    email: '',
+    phone: '',
+    salonName: '',
+    salonAddress: '',
+    salonCity: '',
+    salonState: '',
+    salonPincode: '',
+    salonPhone: '',
+    salonEmail: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
 
   const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    smsNotifications: true,
-    appointmentReminders: true,
-    dailyReports: true,
-    lowStockAlerts: true,
+    emailNotifications: false,
+    smsNotifications: false,
+    appointmentReminders: false,
+    dailyReports: false,
+    lowStockAlerts: false,
   });
 
   const [businessHours, setBusinessHours] = useState({
-    monday: { open: '09:00', close: '20:00', closed: false },
-    tuesday: { open: '09:00', close: '20:00', closed: false },
-    wednesday: { open: '09:00', close: '20:00', closed: false },
-    thursday: { open: '09:00', close: '20:00', closed: false },
-    friday: { open: '09:00', close: '20:00', closed: false },
-    saturday: { open: '10:00', close: '18:00', closed: false },
-    sunday: { open: '10:00', close: '18:00', closed: true },
+    monday: { open: '', close: '', closed: false },
+    tuesday: { open: '', close: '', closed: false },
+    wednesday: { open: '', close: '', closed: false },
+    thursday: { open: '', close: '', closed: false },
+    friday: { open: '', close: '', closed: false },
+    saturday: { open: '', close: '', closed: false },
+    sunday: { open: '', close: '', closed: false },
   });
+  const [activePlan, setActivePlan] = useState<{
+    planName?: string;
+    planCode?: string;
+    status?: string;
+    endDate?: string | null;
+  } | null>(null);
+  const [planOptions, setPlanOptions] = useState<
+    Array<{
+      code: string;
+      name: string;
+      price: string;
+      description: string;
+      validity: string;
+      features: string[];
+    }>
+  >([]);
+
+  const formatPlanDate = (value?: string | null) =>
+    value
+      ? new Date(value).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "—";
+
+  const loadSettings = async () => {
+    try {
+      const settings = await ownerSettingsService.get();
+      setProfileData(settings.profileData);
+      setNotifications(settings.notifications);
+      setBusinessHours(settings.businessHours);
+    } catch (error) {
+      console.error('Failed to load settings', error);
+    }
+  };
+
+  const loadActivePlan = async () => {
+    try {
+      const context = await ownerService.getTenantContext();
+      setActivePlan(context?.subscription || null);
+    } catch (error) {
+      console.error('Failed to load active plan', error);
+    }
+  };
+
+  const loadPlans = async () => {
+    try {
+      const plans = await ownerPlansService.list();
+      setPlanOptions(plans);
+    } catch (error) {
+      console.error('Failed to load plans', error);
+    }
+  };
+
+  useEffect(() => {
+    loadSettings();
+    loadActivePlan();
+    loadPlans();
+  }, []);
+
+  const handleSaveSettings = async () => {
+    try {
+      const settings = await ownerSettingsService.update({
+        profileData,
+        notifications,
+        businessHours,
+      });
+      setProfileData(settings.profileData);
+      setNotifications(settings.notifications);
+      setBusinessHours(settings.businessHours);
+    } catch (error) {
+      console.error('Failed to update settings', error);
+    }
+  };
 
   return (
     <div className="min-h-full p-4 md:p-6 max-w-7xl mx-auto">
@@ -62,11 +141,12 @@ export default function ProfileSettings() {
       </div>
 
       <Tabs defaultValue="personal" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+        <TabsList className="flex w-full max-w-3xl flex-wrap gap-2">
           <TabsTrigger value="personal">Personal</TabsTrigger>
           <TabsTrigger value="salon">Salon Details</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="plan">Active Plan</TabsTrigger>
         </TabsList>
 
         {/* Personal Information */}
@@ -132,7 +212,10 @@ export default function ProfileSettings() {
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" className="border-rose-300/50">Cancel</Button>
-                <Button className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20">
+                <Button
+                  onClick={handleSaveSettings}
+                  className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20"
+                >
                   Save Changes
                 </Button>
               </div>
@@ -280,7 +363,10 @@ export default function ProfileSettings() {
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" className="border-rose-300/50">Cancel</Button>
-                <Button className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20">
+                <Button
+                  onClick={handleSaveSettings}
+                  className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20"
+                >
                   Save Changes
                 </Button>
               </div>
@@ -370,7 +456,10 @@ export default function ProfileSettings() {
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" className="border-rose-300/50">Cancel</Button>
-                <Button className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20">
+                <Button
+                  onClick={handleSaveSettings}
+                  className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20"
+                >
                   Save Preferences
                 </Button>
               </div>
@@ -458,9 +547,141 @@ export default function ProfileSettings() {
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" className="border-rose-300/50">Cancel</Button>
-                <Button className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20">
+                <Button
+                  onClick={handleSaveSettings}
+                  className="bg-gradient-to-r from-rose-400 to-purple-400 hover:from-rose-500 hover:to-purple-500 text-white shadow-lg shadow-rose-400/20"
+                >
                   Update Password
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Active Plan */}
+        <TabsContent value="plan">
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Active Plan</CardTitle>
+                <CardDescription>
+                  Review your current subscription and upgrade when ready.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Plan Name</p>
+                  <p className="text-foreground">
+                    {activePlan?.planName || 'No active plan'}
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={
+                    activePlan?.status === 'ACTIVE'
+                      ? 'bg-green-50 text-green-700 border-green-200'
+                      : 'bg-muted text-muted-foreground border-border'
+                  }
+                >
+                  {activePlan?.status || 'INACTIVE'}
+                </Badge>
+              </div>
+
+              <Separator />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Plan Code</p>
+                  <p className="text-foreground">
+                    {activePlan?.planCode || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Renewal Date</p>
+                  <p className="text-foreground">
+                    {formatPlanDate(activePlan?.endDate)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 whitespace-nowrap">
+                  Upgrade Plan
+                </Button>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-foreground">All Plans</p>
+                  <p className="text-sm text-muted-foreground">
+                    Compare pricing, features, and validity before upgrading.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {planOptions.map((plan) => {
+                    const isActivePlan = activePlan?.planCode === plan.code;
+                    return (
+                      <Card
+                        key={plan.code}
+                        className={
+                          isActivePlan
+                            ? "border-blue-500/40 shadow-lg shadow-blue-500/20"
+                            : undefined
+                        }
+                      >
+                        <CardHeader>
+                          <div className="flex items-center justify-between gap-2">
+                            <CardTitle>{plan.name}</CardTitle>
+                            {isActivePlan && (
+                              <Badge className="bg-blue-500 text-white">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                          <CardDescription>{plan.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Price
+                            </p>
+                            <p className="text-foreground">{plan.price}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Validity
+                            </p>
+                            <p className="text-foreground">{plan.validity}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Expiry
+                            </p>
+                            <p className="text-foreground">
+                              {isActivePlan
+                                ? formatPlanDate(activePlan?.endDate)
+                                : "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Features
+                            </p>
+                            <ul className="list-disc pl-4 text-sm text-muted-foreground space-y-1">
+                              {plan.features.map((feature) => (
+                                <li key={feature}>{feature}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>

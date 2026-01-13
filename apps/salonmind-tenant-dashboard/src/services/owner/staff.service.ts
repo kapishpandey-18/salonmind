@@ -21,6 +21,10 @@ export interface StaffPayload {
   notes?: string;
   status?: string;
   isActive?: boolean;
+  compensation?: {
+    monthlySalary?: number;
+    commissionPercent?: number;
+  };
   branchId?: string;
 }
 
@@ -80,6 +84,13 @@ export const ownerStaffService = {
     const response = await api.patch<{ staff: OwnerStaff }>(
       `${API_ENDPOINTS.OWNER.STAFF}/${id}/status`,
       { isActive }
+    );
+    return response.data?.staff;
+  },
+
+  async detail(id: string): Promise<OwnerStaff> {
+    const response = await api.get<{ staff: OwnerStaff }>(
+      `${API_ENDPOINTS.OWNER.STAFF}/${id}`
     );
     return response.data?.staff;
   },

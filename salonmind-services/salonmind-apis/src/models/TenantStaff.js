@@ -66,6 +66,18 @@ const tenantStaffSchema = new mongoose.Schema(
       max: 100,
       default: 100,
     },
+    compensation: {
+      monthlySalary: {
+        type: Number,
+        min: 0,
+        default: 0,
+      },
+      commissionPercent: {
+        type: Number,
+        enum: [0, 5, 10, 15, 20],
+        default: 0,
+      },
+    },
     status: {
       type: String,
       enum: ["active", "off"],

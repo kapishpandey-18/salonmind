@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -36,6 +36,7 @@ import SalonMindLogo from "./SalonMindLogo";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import { ownerService } from "../services/ownerService";
+import { ownerPlansService } from "../services/owner/plans.service";
 import { STORAGE_KEYS } from "../constants/api";
 
 interface OnboardingProps {
@@ -80,6 +81,15 @@ export default function Onboarding({
     "idle" | "processing" | "success"
   >("idle");
   const [selectedPlan, setSelectedPlan] = useState<string | null>("BASIC");
+  const [planOptions, setPlanOptions] = useState<
+    Array<{
+      code: string;
+      name: string;
+      price: string;
+      description: string;
+      features: string[];
+    }>
+  >([]);
   const [salonData, setSalonData] = useState<SalonData>({
     salonName: "",
     ownerName: "",
@@ -112,39 +122,33 @@ export default function Onboarding({
     { title: "Complete", icon: CheckCircle2 },
   ];
 
-  const planOptions = [
-    {
-      code: "BASIC",
-      name: "Basic",
-      price: "₹4,999/mo",
-      description: "Single-branch starter",
-      features: ["1 branch included", "Up to 10 staff", "Essential analytics"],
-    },
-    {
-      code: "PRO",
-      name: "Pro",
-      price: "₹9,999/mo",
-      description: "Growing teams",
-      features: [
-        "Up to 3 branches",
-        "Up to 25 staff",
-        "Advanced analytics & SMS",
-      ],
-    },
-    {
-      code: "ADVANCED",
-      name: "Advanced",
-      price: "₹14,999/mo",
-      description: "Unlimited scale",
-      features: ["Unlimited branches", "Unlimited staff", "Priority support"],
-    },
-  ];
-
   const selectedPlanDetails = planOptions.find(
     (plan) => plan.code === selectedPlan
   );
 
   const progress = ((currentStep + 1) / steps.length) * 100;
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const plans = await ownerPlansService.list();
+        setPlanOptions(plans);
+      } catch (error) {
+        console.error("Failed to load plans", error);
+      }
+    };
+
+    loadPlans();
+  }, []);
+
+  useEffect(() => {
+    if (!planOptions.length) {
+      return;
+    }
+    if (!selectedPlan || !planOptions.some((plan) => plan.code === selectedPlan)) {
+      setSelectedPlan(planOptions[0].code);
+    }
+  }, [planOptions, selectedPlan]);
 
   const buildBusinessHoursPayload = () =>
     daysOfWeek.map((day) => ({

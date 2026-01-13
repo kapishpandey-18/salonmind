@@ -26,6 +26,14 @@ export function useStaff(filters: StaffFilters) {
   });
 }
 
+export function useStaffDetail(staffId?: string | null) {
+  return useQuery({
+    queryKey: ["owner-staff-detail", staffId],
+    queryFn: () => ownerStaffService.detail(staffId as string),
+    enabled: Boolean(staffId),
+  });
+}
+
 export function useStaffActions(branchId?: string | null) {
   const queryClient = useQueryClient();
   const invalidate = () =>

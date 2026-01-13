@@ -24,8 +24,7 @@ function verifyPaymentSignature({ orderId, paymentId, signature }) {
   const secret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!secret) {
-    // TODO: Plug real Razorpay signature verification when keys configured
-    return true;
+    throw ApiError.serviceUnavailable("Payment provider not configured");
   }
 
   if (!signature) {

@@ -33,6 +33,23 @@ const DEFAULT_PLANS = [
   },
 ];
 
+const PLAN_FEATURES = {
+  BASIC: ["1 branch included", "Up to 10 staff", "Essential analytics"],
+  PRO: ["Up to 3 branches", "Up to 25 staff", "Advanced analytics & SMS"],
+  ADVANCED: [
+    "Unlimited branches",
+    "Unlimited staff",
+    "Priority support",
+  ],
+};
+
+const formatPlanPrice = (plan) => {
+  const amount = Number(plan.price || 0);
+  const symbol = plan.currency === "INR" ? "₹" : `${plan.currency} `;
+  const suffix = plan.billingCycle === "yearly" ? "/yr" : "/mo";
+  return `${symbol}${amount.toLocaleString("en-IN")}${suffix}`;
+};
+
 async function ensureDefaultPlansSeeded() {
   for (const plan of DEFAULT_PLANS) {
     await SubscriptionPlan.updateOne(
@@ -151,6 +168,26 @@ async function resolvePlanForTenant(tenantId) {
   return { plan: null, source: null };
 }
 
+async function listPlans() {
+  await ensureDefaultPlansSeeded();
+  const plans = await SubscriptionPlan.find({ isActive: true }).sort({
+    price: 1,
+  });
+  return plans.map((plan) => ({
+    code: plan.planCode,
+    name: plan.planName,
+    description: plan.description,
+    price: formatPlanPrice(plan),
+    validity: plan.billingCycle === "yearly" ? "Yearly" : "Monthly",
+    billingCycle: plan.billingCycle,
+    currency: plan.currency,
+    amount: plan.price,
+    maxBranches: plan.maxBranches,
+    maxEmployees: plan.maxEmployees,
+    features: PLAN_FEATURES[plan.planCode] || [],
+  }));
+}
+
 module.exports = {
   ensureDefaultPlansSeeded,
   getPlanByCode,
@@ -159,4 +196,5 @@ module.exports = {
   getActiveSubscriptionForTenant,
   activateSubscription,
   resolvePlanForTenant,
+  listPlans,
 };

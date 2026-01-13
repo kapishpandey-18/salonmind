@@ -6,6 +6,8 @@ const {
   buildSearchQuery,
 } = require("../utils/pagination");
 
+const ALLOWED_COMMISSIONS = [0, 5, 10, 15, 20];
+
 function sanitizeStaffPayload(payload) {
   return {
     name: payload.name?.trim(),
@@ -24,6 +26,58 @@ function sanitizeStaffPayload(payload) {
     notes: payload.notes,
     joiningDate: payload.joiningDate,
   };
+}
+
+function normalizeCompensationPayload(payload) {
+  if (typeof payload === "undefined" || payload === null) {
+    return undefined;
+  }
+  if (typeof payload !== "object") {
+    const error = ApiError.badRequest("Compensation must be an object");
+    error.code = "INVALID_COMPENSATION";
+    throw error;
+  }
+  const hasSalary = typeof payload.monthlySalary !== "undefined";
+  const hasCommission = typeof payload.commissionPercent !== "undefined";
+  if (!hasSalary && !hasCommission) {
+    return undefined;
+  }
+  const normalized = {};
+  if (hasSalary) {
+    normalized.monthlySalary = Number(payload.monthlySalary);
+  }
+  if (hasCommission) {
+    normalized.commissionPercent = Number(payload.commissionPercent);
+  }
+  return normalized;
+}
+
+function validateCompensation(compensation) {
+  if (!compensation) {
+    return;
+  }
+  if (
+    typeof compensation.monthlySalary !== "undefined" &&
+    (!Number.isFinite(compensation.monthlySalary) ||
+      compensation.monthlySalary < 0)
+  ) {
+    const error = ApiError.badRequest(
+      "Monthly salary must be a number greater than or equal to 0"
+    );
+    error.code = "INVALID_COMPENSATION";
+    throw error;
+  }
+
+  if (
+    typeof compensation.commissionPercent !== "undefined" &&
+    !ALLOWED_COMMISSIONS.includes(compensation.commissionPercent)
+  ) {
+    const error = ApiError.badRequest(
+      "Commission percent must be one of 0, 5, 10, 15, 20"
+    );
+    error.code = "INVALID_COMPENSATION";
+    throw error;
+  }
 }
 
 async function listStaff({ tenantId, branchId, search, pagination = {} }) {
@@ -69,10 +123,16 @@ async function createStaff({ tenantId, userId, branchId, payload }) {
     fallbackToDefault: false,
   });
 
+  const compensation = normalizeCompensationPayload(payload.compensation);
+  validateCompensation(compensation);
+
   const data = sanitizeStaffPayload(payload);
   data.tenant = tenantId;
   data.branch = branch._id;
   data.createdBy = userId;
+  if (compensation) {
+    data.compensation = compensation;
+  }
 
   return TenantStaff.create(data);
 }
@@ -95,12 +155,26 @@ async function updateStaff({ tenantId, staffId, payload }) {
     staff.branch = branch._id;
   }
 
+  const compensation = normalizeCompensationPayload(payload.compensation);
+  validateCompensation(compensation);
+
   const data = sanitizeStaffPayload(payload);
   Object.entries(data).forEach(([key, value]) => {
     if (typeof value !== "undefined") {
       staff[key] = value;
     }
   });
+  if (compensation) {
+    if (!staff.compensation) {
+      staff.compensation = {};
+    }
+    if (typeof compensation.monthlySalary !== "undefined") {
+      staff.compensation.monthlySalary = compensation.monthlySalary;
+    }
+    if (typeof compensation.commissionPercent !== "undefined") {
+      staff.compensation.commissionPercent = compensation.commissionPercent;
+    }
+  }
 
   await staff.save();
   return staff;

@@ -1,49 +1,73 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DollarSign, TrendingUp, TrendingDown, Calendar, CreditCard, Wallet } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { ownerRevenueService } from '../services/owner/revenue.service';
+import { ownerReportsService } from '../services/owner/reports.service';
 
-const monthlyRevenue = [
-  { month: 'Jan', revenue: 12400, expenses: 7200, profit: 5200, appointments: 234 },
-  { month: 'Feb', revenue: 13200, expenses: 7400, profit: 5800, appointments: 256 },
-  { month: 'Mar', revenue: 14800, expenses: 7600, profit: 7200, appointments: 289 },
-  { month: 'Apr', revenue: 16200, expenses: 7800, profit: 8400, appointments: 312 },
-  { month: 'May', revenue: 15600, expenses: 7700, profit: 7900, appointments: 298 },
-  { month: 'Jun', revenue: 18900, expenses: 8200, profit: 10700, appointments: 345 },
-];
-
-const dailyRevenue = [
-  { day: 'Mon', revenue: 2840 },
-  { day: 'Tue', revenue: 3120 },
-  { day: 'Wed', revenue: 2650 },
-  { day: 'Thu', revenue: 3480 },
-  { day: 'Fri', revenue: 3920 },
-  { day: 'Sat', revenue: 4580 },
-  { day: 'Sun', revenue: 2240 },
-];
-
-const serviceRevenue = [
-  { service: 'Haircut', revenue: 10140, percentage: 28 },
-  { service: 'Coloring', revenue: 16170, percentage: 45 },
-  { service: 'Styling', revenue: 6160, percentage: 17 },
-  { service: 'Treatment', revenue: 3560, percentage: 10 },
-];
-
-const paymentMethods = [
-  { method: 'Credit Card', amount: 18450, percentage: 62, icon: CreditCard },
-  { method: 'Cash', amount: 7320, percentage: 25, icon: DollarSign },
-  { method: 'Digital Wallet', amount: 3860, percentage: 13, icon: Wallet },
-];
-
-const topStaff = [
-  { name: 'Emma Wilson', revenue: 24680, appointments: 156, avgTicket: 158 },
-  { name: 'Sophie Chen', revenue: 21340, appointments: 98, avgTicket: 218 },
-  { name: 'James Carter', revenue: 18920, appointments: 142, avgTicket: 133 },
-  { name: 'Alex Morgan', revenue: 16450, appointments: 124, avgTicket: 133 },
-];
+const PAYMENT_METHOD_ICONS: Record<string, typeof DollarSign> = {
+  'Credit Card': CreditCard,
+  Cash: DollarSign,
+  'Digital Wallet': Wallet,
+};
 
 export default function Revenue() {
+  const [summaryStats, setSummaryStats] = useState({
+    totalRevenue: 0,
+    netProfit: 0,
+    avgTicket: 0,
+    outstanding: 0,
+    pendingPayments: 0,
+  });
+  const [monthlyRevenue, setMonthlyRevenue] = useState<
+    Array<{ month: string; revenue: number; expenses: number; profit: number; appointments: number }>
+  >([]);
+  const [dailyRevenue, setDailyRevenue] = useState<
+    Array<{ day: string; revenue: number }>
+  >([]);
+  const [serviceRevenue, setServiceRevenue] = useState<
+    Array<{ service: string; revenue: number; percentage: number }>
+  >([]);
+  const [paymentMethods, setPaymentMethods] = useState<
+    Array<{ method: string; amount: number; percentage: number; icon: typeof DollarSign }>
+  >([]);
+  const [topStaff, setTopStaff] = useState<
+    Array<{ name: string; revenue: number; appointments: number; avgTicket: number }>
+  >([]);
+
+  useEffect(() => {
+    const loadRevenue = async () => {
+      try {
+        const summary = await ownerRevenueService.getSummary();
+        if (summary?.summary) {
+          setSummaryStats(summary.summary);
+        }
+        setMonthlyRevenue(summary?.monthlyRevenue ?? []);
+        setDailyRevenue(summary?.dailyRevenue ?? []);
+        setTopStaff(summary?.topStaff ?? []);
+        setPaymentMethods(
+          (summary?.paymentMethods ?? []).map((method) => ({
+            ...method,
+            icon: PAYMENT_METHOD_ICONS[method.method] || DollarSign,
+          }))
+        );
+      } catch (error) {
+        console.error('Failed to load revenue summary', error);
+      }
+
+      try {
+        const services = await ownerReportsService.getTopServices('monthly');
+        setServiceRevenue(services ?? []);
+      } catch (error) {
+        console.error('Failed to load revenue services', error);
+      }
+    };
+
+    loadRevenue();
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -60,7 +84,9 @@ export default function Revenue() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-                <div className="text-2xl text-foreground mb-1">₹91,100</div>
+                <div className="text-2xl text-foreground mb-1">
+                  ₹{summaryStats.totalRevenue.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-1 text-xs">
                   <div className="flex items-center gap-1 bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">
                     <TrendingUp className="w-3 h-3" />
@@ -82,7 +108,9 @@ export default function Revenue() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Net Profit</p>
-                <div className="text-2xl text-foreground mb-1">₹45,200</div>
+                <div className="text-2xl text-foreground mb-1">
+                  ₹{summaryStats.netProfit.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-1 text-xs">
                   <div className="flex items-center gap-1 bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">
                     <TrendingUp className="w-3 h-3" />
@@ -105,7 +133,9 @@ export default function Revenue() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Avg. Ticket Size</p>
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-2xl text-foreground">₹156</span>
+                  <span className="text-2xl text-foreground">
+                    ₹{summaryStats.avgTicket.toLocaleString()}
+                  </span>
                   <span className="text-xs text-muted-foreground">per appointment</span>
                 </div>
               </div>
@@ -122,11 +152,13 @@ export default function Revenue() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Outstanding</p>
-                <div className="text-2xl text-foreground mb-1">₹2,340</div>
+                <div className="text-2xl text-foreground mb-1">
+                  ₹{summaryStats.outstanding.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-1 text-xs">
                   <div className="flex items-center gap-1 bg-red-50 text-red-700 px-1.5 py-0.5 rounded-full">
                     <TrendingDown className="w-3 h-3" />
-                    <span>5 pending</span>
+                    <span>{summaryStats.pendingPayments} pending</span>
                   </div>
                   <span className="text-muted-foreground">payments</span>
                 </div>

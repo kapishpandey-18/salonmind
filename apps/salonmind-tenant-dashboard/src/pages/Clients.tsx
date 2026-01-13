@@ -1,6 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Phone, Mail, Tag, Eye, Pencil, Trash2 } from "lucide-react";
+import {
+  Eye,
+  Mail,
+  Pencil,
+  Phone,
+  Search,
+  Star,
+  Tag,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -11,6 +23,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -63,11 +76,20 @@ export default function Clients({ activeBranchId }: ClientsPageProps) {
     page,
     limit,
   });
-  const clients = data?.items ?? [];
+  const clients: OwnerClient[] = data?.items ?? [];
   const pagination = data?.pagination;
 
   const { create, update, remove } = useClientActions(activeBranchId);
   const isMutating = create.isPending || update.isPending || remove.isPending;
+
+  const summary = useMemo(() => {
+    const total = pagination?.total ?? clients.length;
+    const active = clients.filter((client) => client.status !== "inactive")
+      .length;
+    const vip = clients.filter((client) => client.status === "vip").length;
+    const recent = clients.filter((client) => client.status === "new").length;
+    return { total, active, vip, recent };
+  }, [clients, pagination?.total]);
 
   const openCreateModal = () => {
     setSelectedClient(null);
@@ -140,12 +162,94 @@ export default function Clients({ activeBranchId }: ClientsPageProps) {
       <EntityPageHeader
         title="Clients"
         description="Manage salon clients and their contact information."
-        searchValue={search}
-        onSearchChange={setSearch}
         onCreate={openCreateModal}
         createLabel="Add Client"
         isCreateDisabled={!activeBranchId}
       />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Total Clients
+                </p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.total}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">Active</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.active}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">VIP</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.vip}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <Star className="w-5 h-5 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground mb-1">New</p>
+                <div className="text-2xl text-foreground mb-1">
+                  {summary.recent}
+                </div>
+              </div>
+              <div className="shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserPlus className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-card border-border">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search clients..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="pl-10 bg-input-background border-border"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -261,6 +365,11 @@ export default function Clients({ activeBranchId }: ClientsPageProps) {
             <DialogTitle>
               {selectedClient ? "Edit Client" : "Add Client"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedClient
+                ? "Update client details."
+                : "Enter client details."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -347,6 +456,9 @@ export default function Clients({ activeBranchId }: ClientsPageProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedClient?.fullName}</DialogTitle>
+            <DialogDescription className="sr-only">
+              Review client details.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 text-sm text-muted-foreground">
             <div>Phone: {selectedClient?.phoneNumber || "—"}</div>

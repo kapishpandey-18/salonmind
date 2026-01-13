@@ -168,6 +168,20 @@ async function updateStaff({ userId, staff }) {
 }
 
 function formatTenantContext({ tenant, subscription, branches, activeBranchId }) {
+  const plan = subscription?.plan || null;
+  const planDetails = plan
+    ? {
+        planCode: plan.planCode,
+        planName: plan.planName,
+        description: plan.description,
+        price: plan.price,
+        currency: plan.currency,
+        billingCycle: plan.billingCycle,
+        maxBranches: plan.maxBranches,
+        maxEmployees: plan.maxEmployees,
+      }
+    : null;
+
   return {
     tenant: {
       id: tenant._id,
@@ -180,6 +194,15 @@ function formatTenantContext({ tenant, subscription, branches, activeBranchId })
           planCode: subscription.plan?.planCode,
           planName: subscription.plan?.planName,
           endDate: subscription.endDate,
+          maxBranches: subscription.plan?.maxBranches,
+          maxEmployees: subscription.plan?.maxEmployees,
+        }
+      : null,
+    activePlan: planDetails,
+    planLimits: planDetails
+      ? {
+          maxBranches: planDetails.maxBranches,
+          maxEmployees: planDetails.maxEmployees,
         }
       : null,
     branches: branches.map((branch) => ({

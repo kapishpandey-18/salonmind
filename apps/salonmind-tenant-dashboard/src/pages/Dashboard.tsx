@@ -33,6 +33,7 @@ const Overview = lazy(() => import("./Overview"));
 const Appointments = lazy(() => import("./Appointments"));
 const Clients = lazy(() => import("./Clients"));
 const Staff = lazy(() => import("./Staff"));
+const StaffDetails = lazy(() => import("./StaffDetails"));
 const Services = lazy(() => import("./Services"));
 const Revenue = lazy(() => import("./Revenue"));
 const Inventory = lazy(() => import("./Inventory"));
@@ -61,6 +62,7 @@ type View =
   | "appointments"
   | "clients"
   | "staff"
+  | "staff-details"
   | "services"
   | "revenue"
   | "inventory"
@@ -70,6 +72,7 @@ type View =
 
 export default function Dashboard({ onLogout }: DashboardProps) {
   const [currentView, setCurrentView] = useState<View>("overview");
+  const [staffDetailId, setStaffDetailId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeBranchId, setActiveBranchId] = useState<string | null>(() => {
     if (typeof window === "undefined") {
@@ -109,6 +112,40 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     }
   }, [tenantContext, activeBranchId]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncFromHistory = (event?: PopStateEvent) => {
+      const state = (event?.state ?? window.history.state) as
+        | { view?: View; staffId?: string }
+        | null;
+
+      if (state?.view) {
+        setCurrentView(state.view);
+        setStaffDetailId(
+          state.view === "staff-details" ? state.staffId || null : null
+        );
+        return;
+      }
+
+      const match = window.location.pathname.match(/^\/staff\/([^/]+)$/);
+      if (match) {
+        setCurrentView("staff-details");
+        setStaffDetailId(match[1]);
+        return;
+      }
+
+      setStaffDetailId(null);
+      setCurrentView("overview");
+    };
+
+    syncFromHistory();
+    window.addEventListener("popstate", syncFromHistory);
+    return () => window.removeEventListener("popstate", syncFromHistory);
+  }, []);
+
   const menuItems = [
     { id: "overview" as View, label: "Overview", icon: LayoutDashboard },
     { id: "appointments" as View, label: "Appointments", icon: Calendar },
@@ -122,6 +159,36 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     { id: "help" as View, label: "Help", icon: HelpCircle },
   ];
 
+  const navigateToView = (view: View) => {
+    setCurrentView(view);
+    if (view !== "staff-details") {
+      setStaffDetailId(null);
+    }
+    if (typeof window !== "undefined") {
+      const nextPath =
+        view === "staff-details" && staffDetailId
+          ? `/staff/${staffDetailId}`
+          : "/";
+      window.history.pushState(
+        { view, staffId: view === "staff-details" ? staffDetailId : undefined },
+        "",
+        nextPath
+      );
+    }
+  };
+
+  const openStaffDetails = (staffId: string) => {
+    setStaffDetailId(staffId);
+    setCurrentView("staff-details");
+    if (typeof window !== "undefined") {
+      window.history.pushState(
+        { view: "staff-details", staffId },
+        "",
+        `/staff/${staffId}`
+      );
+    }
+  };
+
   const resolvedBranchId =
     activeBranchId || tenantContext?.activeBranchId || null;
 
@@ -134,7 +201,14 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       case "clients":
         return <Clients activeBranchId={resolvedBranchId} />;
       case "staff":
-        return <Staff activeBranchId={resolvedBranchId} />;
+        return (
+          <Staff
+            activeBranchId={resolvedBranchId}
+            onOpenDetails={openStaffDetails}
+          />
+        );
+      case "staff-details":
+        return <StaffDetails staffId={staffDetailId} />;
       case "services":
         return <Services activeBranchId={resolvedBranchId} />;
       case "products":
@@ -196,12 +270,15 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         <nav className="flex-1 p-4 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const isActive =
+              currentView === item.id ||
+              (currentView === "staff-details" && item.id === "staff");
             return (
               <button
                 key={item.id}
-                onClick={() => setCurrentView(item.id)}
+                onClick={() => navigateToView(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  currentView === item.id
+                  isActive
                     ? "bg-blue-500/30 text-blue-100 border border-blue-400/40 shadow-lg shadow-blue-500/20"
                     : "text-blue-200/70 hover:bg-blue-500/20 hover:text-blue-100"
                 }`}
@@ -258,15 +335,18 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             <nav className="flex-1 p-4 space-y-1">
               {menuItems.map((item) => {
                 const Icon = item.icon;
+                const isActive =
+                  currentView === item.id ||
+                  (currentView === "staff-details" && item.id === "staff");
                 return (
                   <button
                     key={item.id}
                     onClick={() => {
-                      setCurrentView(item.id);
+                      navigateToView(item.id);
                       setSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      currentView === item.id
+                      isActive
                         ? "bg-blue-500/30 text-blue-100 border border-blue-400/40 shadow-lg shadow-blue-500/20"
                         : "text-blue-200/70 hover:bg-blue-500/20 hover:text-blue-100"
                     }`}

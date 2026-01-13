@@ -1,44 +1,74 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { Calendar, Users, DollarSign, TrendingUp, Clock, Star } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
+import { ownerRevenueService } from '../services/owner/revenue.service';
+import { ownerReportsService } from '../services/owner/reports.service';
 
-const revenueData = [
-  { month: 'Jan', revenue: 12400, appointments: 234 },
-  { month: 'Feb', revenue: 13200, appointments: 256 },
-  { month: 'Mar', revenue: 14800, appointments: 289 },
-  { month: 'Apr', revenue: 16200, appointments: 312 },
-  { month: 'May', revenue: 15600, appointments: 298 },
-  { month: 'Jun', revenue: 18900, appointments: 345 },
-];
-
-const serviceData = [
-  { name: 'Haircut', value: 35, color: '#e879f9', amount: 52500 },
-  { name: 'Coloring', value: 25, color: '#fb7185', amount: 37500 },
-  { name: 'Styling', value: 20, color: '#f0abfc', amount: 30000 },
-  { name: 'Treatments', value: 12, color: '#fda4af', amount: 18000 },
-  { name: 'Other', value: 8, color: '#fbbf24', amount: 12000 },
-];
-
-const appointmentData = [
-  { day: 'Mon', scheduled: 45, completed: 42 },
-  { day: 'Tue', scheduled: 52, completed: 50 },
-  { day: 'Wed', scheduled: 48, completed: 45 },
-  { day: 'Thu', scheduled: 61, completed: 58 },
-  { day: 'Fri', scheduled: 68, completed: 65 },
-  { day: 'Sat', scheduled: 75, completed: 72 },
-  { day: 'Sun', scheduled: 38, completed: 36 },
-];
-
-const upcomingAppointments = [
-  { id: 1, client: 'Sarah Johnson', service: 'Haircut & Style', time: '10:00 AM', stylist: 'Emma' },
-  { id: 2, client: 'Mike Brown', service: 'Beard Trim', time: '10:30 AM', stylist: 'James' },
-  { id: 3, client: 'Lisa Davis', service: 'Hair Coloring', time: '11:00 AM', stylist: 'Emma' },
-  { id: 4, client: 'Tom Wilson', service: 'Haircut', time: '11:30 AM', stylist: 'Alex' },
-  { id: 5, client: 'Anna Taylor', service: 'Hair Treatment', time: '12:00 PM', stylist: 'Sophie' },
+const SERVICE_COLORS = [
+  '#e879f9',
+  '#fb7185',
+  '#f0abfc',
+  '#fda4af',
+  '#fbbf24',
 ];
 
 export default function Overview() {
+  const [revenueData, setRevenueData] = useState<
+    Array<{ month: string; revenue: number; appointments: number }>
+  >([]);
+  const [serviceData, setServiceData] = useState<
+    Array<{ name: string; value: number; color: string; amount: number }>
+  >([]);
+  const [appointmentData, setAppointmentData] = useState<
+    Array<{ day: string; scheduled: number; completed: number }>
+  >([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<
+    Array<{ id: string; client: string; service: string; time: string; stylist: string }>
+  >([]);
+  const [overviewStats, setOverviewStats] = useState({
+    todayRevenue: 0,
+    appointmentsToday: 0,
+    pendingAppointments: 0,
+    confirmedAppointments: 0,
+    activeClients: 0,
+    avgRating: 0,
+    reviewCount: 0,
+  });
+
+  useEffect(() => {
+    const loadOverview = async () => {
+      try {
+        const summary = await ownerRevenueService.getSummary();
+        setRevenueData(summary?.monthlyRevenue ?? []);
+        setAppointmentData(summary?.appointmentData ?? []);
+        setUpcomingAppointments(summary?.upcomingAppointments ?? []);
+        if (summary?.overviewStats) {
+          setOverviewStats(summary.overviewStats);
+        }
+      } catch (error) {
+        console.error('Failed to load overview summary', error);
+      }
+
+      try {
+        const services = await ownerReportsService.getTopServices('monthly');
+        setServiceData(
+          (services ?? []).map((service, index) => ({
+            name: service.service,
+            value: service.percentage,
+            amount: service.revenue,
+            color: SERVICE_COLORS[index % SERVICE_COLORS.length],
+          }))
+        );
+      } catch (error) {
+        console.error('Failed to load service distribution', error);
+      }
+    };
+
+    loadOverview();
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -55,7 +85,9 @@ export default function Overview() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Today's Revenue</p>
-                <div className="text-2xl text-foreground mb-1">₹2,847</div>
+                <div className="text-2xl text-foreground mb-1">
+                  ₹{overviewStats.todayRevenue.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-1 text-xs">
                   <div className="flex items-center gap-1 bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">
                     <TrendingUp className="w-3 h-3" />
@@ -77,13 +109,15 @@ export default function Overview() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Appointments Today</p>
-                <div className="text-2xl text-foreground mb-1">28</div>
+                <div className="text-2xl text-foreground mb-1">
+                  {overviewStats.appointmentsToday}
+                </div>
                 <div className="flex items-center gap-1 text-xs flex-wrap">
                   <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs px-1.5 py-0">
-                    5 pending
+                    {overviewStats.pendingAppointments} pending
                   </Badge>
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-1.5 py-0">
-                    23 confirmed
+                    {overviewStats.confirmedAppointments} confirmed
                   </Badge>
                 </div>
               </div>
@@ -100,7 +134,9 @@ export default function Overview() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Active Clients</p>
-                <div className="text-2xl text-foreground mb-1">1,248</div>
+                <div className="text-2xl text-foreground mb-1">
+                  {overviewStats.activeClients.toLocaleString()}
+                </div>
                 <div className="flex items-center gap-1 text-xs">
                   <div className="flex items-center gap-1 bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">
                     <TrendingUp className="w-3 h-3" />
@@ -123,7 +159,9 @@ export default function Overview() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Average Rating</p>
                 <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-2xl text-foreground">4.8</span>
+                  <span className="text-2xl text-foreground">
+                    {overviewStats.avgRating.toFixed(1)}
+                  </span>
                   <span className="text-sm text-muted-foreground">/5.0</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -132,7 +170,7 @@ export default function Overview() {
                       <Star key={star} className="w-3 h-3 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
-                  <span>(342 reviews)</span>
+                  <span>({overviewStats.reviewCount} reviews)</span>
                 </div>
               </div>
               <div className="shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
