@@ -1,59 +1,158 @@
-# SalonMind - Salon Management System
+# SalonMind - Multi-Tenant Salon Management Platform
 
-AI-powered salon management platform for staff and customers.
+A comprehensive AI-powered salon management SaaS platform for salon owners, staff, and administrators.
 
 ## 📁 Project Structure
 
 ```
 salonmind/
 ├── apps/
-│   ├── salonmind-tenant-daashboard/  # Salon owner (tenant) dashboard – OTP login, onboarding, React Query modules
-│   ├── salonmind-dashboard/          # Platform admin console (placeholder scaffold)
-│   ├── salonmind-people/             # Employee/mobile experience (Capacitor + React prototype)
-│   ├── employee-app/                 # Legacy employee prototype notes
-│   └── salonmind/                    # Marketing/landing site placeholder
+│   ├── salonmind-tenant-dashboard/   # Salon owner dashboard (React + TypeScript)
+│   ├── salonmind-dashboard/          # Platform admin console
+│   └── salonmind-people/             # Employee mobile app (Capacitor + React)
 ├── salonmind-services/
-│   └── salonind-apis/    # Backend REST API
+│   └── salonmind-apis/               # Backend REST API (Node.js + Express + MongoDB)
 ├── packages/
-│   ├── ui/               # Shared component library (placeholder)
-│   ├── config/           # Shared tooling configs (placeholder)
-│   ├── utils/            # Shared helpers (placeholder)
-│   ├── auth/             # Shared auth helpers (placeholder)
-│   └── ai/               # Shared AI helpers (placeholder)
-└── docs/                 # Documentation hub
+│   ├── auth-client/                  # Shared authentication client library
+│   ├── ui/                           # Shared UI components (planned)
+│   ├── config/                       # Shared configurations (planned)
+│   ├── utils/                        # Shared utilities (planned)
+│   └── ai/                           # AI helpers (planned)
+├── docs/                             # Documentation
+└── turbo.json                        # Turborepo configuration
 ```
 
 ## 🚀 Quick Start
 
-### Tenant Dashboard (Owner App)
+### Prerequisites
+- Node.js 18+
+- pnpm 9.x
+- MongoDB
+
+### Install Dependencies
 ```bash
-cd apps/salonmind-tenant-daashboard
 pnpm install
+```
+
+### Run All Apps (Development)
+```bash
 pnpm dev
 ```
 
-### Admin / Landing Apps
-> `apps/salonmind-dashboard` and `apps/salonmind` are placeholders until their builds are added.
+### Run Individual Apps
 
-### Backend API
+**Tenant Dashboard (Owner App):**
 ```bash
-cd salonmind-services/salonind-apis
+cd apps/salonmind-tenant-dashboard
+pnpm dev
+```
+
+**Employee App:**
+```bash
+cd apps/salonmind-people
+pnpm dev
+```
+
+**Admin Dashboard:**
+```bash
+cd apps/salonmind-dashboard
+pnpm dev
+```
+
+**Backend API:**
+```bash
+cd salonmind-services/salonmind-apis
 pnpm install
 pnpm run dev
 ```
 
 ## 🛠️ Tech Stack
 
-**Frontends:** React 18 + TypeScript + Vite + Tailwind CSS  
-**Backend:** Node.js + Express + MongoDB  
-**Tooling:** pnpm + TurboRepo
+### Frontend
+- **Framework:** React 18 + TypeScript
+- **Build Tool:** Vite
+- **Styling:** Tailwind CSS
+- **UI Components:** Radix UI + shadcn/ui
+- **State Management:** React Query (TanStack Query)
+- **Charts:** Recharts
+- **Forms:** React Hook Form
+- **Testing:** Playwright (E2E)
 
-## 📦 Repository
+### Backend
+- **Runtime:** Node.js
+- **Framework:** Express.js
+- **Database:** MongoDB
+- **Authentication:** JWT + OTP-based login
 
-- **Main:** Production-ready code
-- **Dev:** Active development
+### Tooling
+- **Monorepo:** Turborepo
+- **Package Manager:** pnpm
+- **Mobile:** Capacitor (for salonmind-people)
+
+## 📦 Features
+
+### Tenant Dashboard (Owner App)
+- 🔐 OTP-based authentication
+- 📋 Onboarding flow for new tenants
+- 👥 Client management
+- 👨‍💼 Staff management
+- 📅 Appointment scheduling
+- 💇 Services & pricing
+- 📦 Inventory management
+- 🛍️ Products catalog
+- 💰 Revenue analytics & reports
+- ⚙️ Branch & settings management
+- 📊 Dashboard with KPIs
+
+### Backend API Modules
+- **Auth:** OTP generation, token management, session handling
+- **Owner:** Full CRUD for appointments, branches, clients, inventory, products, reports, revenue, services, settings, staff
+
+## 🧪 Testing
+
+### Run E2E Tests (Tenant Dashboard)
+```bash
+cd apps/salonmind-tenant-dashboard
+pnpm test           # Run all tests
+pnpm test:ui        # Interactive UI mode
+pnpm test:headed    # Run with browser visible
+pnpm test:report    # View test report
+```
+
+## 📂 Environment Variables
+
+Copy `.env.example` to `.env` in each app/service directory and configure:
+
+```bash
+# API
+MONGODB_URI=mongodb://localhost:27017/salonmind
+JWT_SECRET=your-secret-key
+PORT=5000
+
+# Frontend Apps
+VITE_API_URL=http://localhost:5000/api
+```
+
+## 🌿 Git Branches
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Production-ready code |
+| `dev`  | Active development |
+| `stg`  | Staging environment |
+| `prod` | Production deployment |
+
+## 📜 Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start all apps in development mode |
+| `pnpm build` | Build all apps |
+| `pnpm lint` | Lint all apps |
+| `pnpm test` | Run tests |
+| `pnpm e2e` | Run E2E tests |
 
 ---
 
 **Developer:** Kapish Pandey  
-**Last Updated:** November 2025
+**Last Updated:** January 2026
