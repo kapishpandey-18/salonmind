@@ -2,7 +2,7 @@
 
 A comprehensive AI-powered salon management SaaS platform for salon owners, staff, and administrators.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 salonmind/
@@ -22,16 +22,44 @@ salonmind/
 └── turbo.json                        # Turborepo configuration
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+
 - pnpm 9.x
-- MongoDB
+- MongoDB (local or Atlas)
 
 ### Install Dependencies
 ```bash
 pnpm install
+```
+
+### Environment Setup
+
+Each environment has its own configuration:
+
+```bash
+# Backend (salonmind-services/salonmind-apis/)
+.env.development    # Development environment
+.env.staging        # Staging environment
+.env.production     # Production environment
+```
+
+Copy `.env.example` to `.env` and configure:
+
+```bash
+# Required variables
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=mongodb+srv://...
+JWT_ACCESS_SECRET=your-access-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+FRONTEND_URL=http://localhost:3000
+
+# OTP Configuration
+OTP_TTL_MS=300000        # 5 minutes
+OTP_MAX_ATTEMPTS=5
+OTP_MAX_RESENDS=3
 ```
 
 ### Run All Apps (Development)
@@ -41,76 +69,200 @@ pnpm dev
 
 ### Run Individual Apps
 
-**Tenant Dashboard (Owner App):**
-```bash
-cd apps/salonmind-tenant-dashboard
-pnpm dev
-```
+| App | Command | Port |
+|-----|---------|------|
+| Tenant Dashboard | `cd apps/salonmind-tenant-dashboard && pnpm dev` | 3000 |
+| Admin Dashboard | `cd apps/salonmind-dashboard && pnpm dev` | 3010 |
+| Employee App | `cd apps/salonmind-people && pnpm dev` | 3020 |
+| Backend API | `cd salonmind-services/salonmind-apis && pnpm dev` | 5000 |
 
-**Employee App:**
-```bash
-cd apps/salonmind-people
-pnpm dev
-```
-
-**Admin Dashboard:**
-```bash
-cd apps/salonmind-dashboard
-pnpm dev
-```
-
-**Backend API:**
-```bash
-cd salonmind-services/salonmind-apis
-pnpm install
-pnpm run dev
-```
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
-- **Framework:** React 18 + TypeScript
-- **Build Tool:** Vite
-- **Styling:** Tailwind CSS
-- **UI Components:** Radix UI + shadcn/ui
-- **State Management:** React Query (TanStack Query)
-- **Charts:** Recharts
-- **Forms:** React Hook Form
-- **Testing:** Playwright (E2E)
+| Technology | Purpose |
+|------------|---------|
+| React 18 + TypeScript | UI Framework |
+| Vite | Build Tool |
+| Tailwind CSS | Styling |
+| Radix UI + shadcn/ui | UI Components |
+| React Query | Server State Management |
+| React Hook Form | Form Handling |
+| Recharts | Data Visualization |
+| Capacitor | Mobile App (iOS/Android) |
+| Playwright | E2E Testing |
 
 ### Backend
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **Database:** MongoDB
-- **Authentication:** JWT + OTP-based login
+| Technology | Purpose |
+|------------|---------|
+| Node.js + Express | API Framework |
+| MongoDB + Mongoose | Database |
+| JWT | Access Tokens |
+| bcryptjs | Password/OTP Hashing |
+| express-rate-limit | Rate Limiting |
+| express-validator | Input Validation |
 
 ### Tooling
-- **Monorepo:** Turborepo
-- **Package Manager:** pnpm
-- **Mobile:** Capacitor (for salonmind-people)
+| Tool | Purpose |
+|------|---------|
+| Turborepo | Monorepo Management |
+| pnpm | Package Manager |
+| Jest | Unit Testing |
 
-## 📦 Features
+## Architecture
+
+### Multi-Tenancy Model
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Platform Admin                       │
+└─────────────────────────────────────────────────────────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         ▼                 ▼                 ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│    Tenant A     │ │    Tenant B     │ │    Tenant C     │
+│  (Salon Owner)  │ │  (Salon Owner)  │ │  (Salon Owner)  │
+├─────────────────┤ ├─────────────────┤ ├─────────────────┤
+│ - Branches      │ │ - Branches      │ │ - Branches      │
+│ - Staff         │ │ - Staff         │ │ - Staff         │
+│ - Clients       │ │ - Clients       │ │ - Clients       │
+│ - Appointments  │ │ - Appointments  │ │ - Appointments  │
+│ - Services      │ │ - Services      │ │ - Services      │
+│ - Products      │ │ - Products      │ │ - Products      │
+│ - Inventory     │ │ - Inventory     │ │ - Inventory     │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+### Authentication Flow
+
+```
+┌──────────┐     ┌──────────────┐     ┌─────────────┐
+│  Client  │────▶│  OTP Send    │────▶│  SMS/Log    │
+│  (App)   │     │  (Rate Ltd)  │     │             │
+└──────────┘     └──────────────┘     └─────────────┘
+      │                                      │
+      │          ┌──────────────┐            │
+      └─────────▶│  OTP Verify  │◀───────────┘
+                 │  (Rate Ltd)  │
+                 └──────────────┘
+                        │
+                 ┌──────▼──────┐
+                 │   Session   │
+                 │   Created   │
+                 └──────┬──────┘
+                        │
+           ┌────────────┴────────────┐
+           ▼                         ▼
+    ┌─────────────┐          ┌──────────────┐
+    │ Access Token│          │Refresh Token │
+    │ (15 min)    │          │ (30 days)    │
+    └─────────────┘          └──────────────┘
+```
+
+## API Endpoints
+
+### Authentication (`/v1/auth`)
+
+| Endpoint | Method | Description | Rate Limit |
+|----------|--------|-------------|------------|
+| `/salon-owner/otp/send` | POST | Send OTP to phone | 5/15min |
+| `/salon-owner/otp/verify` | POST | Verify OTP | 10/15min |
+| `/salon-owner/otp/resend` | POST | Resend OTP | 5/15min |
+| `/salon-owner/token/refresh` | POST | Refresh access token | 30/15min |
+| `/salon-owner/logout` | POST | Logout session | 100/15min |
+| `/salon-owner/me` | GET | Get current user | - |
+| `/admin/*` | - | Admin auth endpoints | Same limits |
+| `/salon-employee/*` | - | Employee auth endpoints | Same limits |
+
+### Owner APIs (`/v1/owner`)
+
+| Resource | Endpoints | Description |
+|----------|-----------|-------------|
+| `/onboarding/*` | PUT, POST | Tenant onboarding flow |
+| `/me/context` | GET | Get tenant context |
+| `/branches` | GET, POST, PATCH, DELETE | Branch management |
+| `/branches/active` | POST | Set active branch |
+| `/staff` | GET, POST, PATCH, DELETE | Staff management |
+| `/services` | GET, POST, PATCH, DELETE | Service catalog |
+| `/clients` | GET, POST, PATCH, DELETE | Client profiles |
+| `/appointments` | GET, POST, PATCH, DELETE | Appointment scheduling |
+| `/products` | GET, POST, PATCH, DELETE | Product catalog |
+| `/inventory` | GET, POST, PATCH | Inventory tracking |
+| `/revenue` | GET | Revenue analytics |
+| `/reports` | GET | Business reports |
+| `/settings` | GET, PUT | Salon settings |
+| `/plans` | GET | Subscription plans |
+
+### Health Check
+
+```bash
+GET /health
+# Response: { "success": true, "message": "Server is running", "timestamp": "..." }
+```
+
+## Security Features
+
+### Rate Limiting
+All auth endpoints are protected with rate limiting:
+
+| Limiter | Limit | Window | Scope |
+|---------|-------|--------|-------|
+| OTP Send | 5 requests | 15 min | Per phone |
+| OTP Verify | 10 requests | 15 min | Per IP |
+| Token Refresh | 30 requests | 15 min | Per IP |
+| General Auth | 100 requests | 15 min | Per IP |
+
+### Token Security
+- Access tokens: Short-lived (15 min), JWT signed
+- Refresh tokens: SHA256 hashed in database, rotated on use
+- Session validation on every authenticated request
+
+### Multi-Tenant Isolation
+- Tenant data isolated via middleware
+- Branch-scoped operations via `X-Branch-Id` header
+- Role-based access control (Owner, Manager, Staff)
+
+### Client Token Storage Options
+```typescript
+// Recommended: Secure hybrid storage
+import { createSecureWebTokenStorage } from '@salonmind/auth-client';
+const storage = createSecureWebTokenStorage();
+
+// Mobile: Native secure storage
+import { createCapacitorTokenStorage } from '@salonmind/auth-client';
+const storage = createCapacitorTokenStorage();
+```
+
+## Features
 
 ### Tenant Dashboard (Owner App)
-- 🔐 OTP-based authentication
-- 📋 Onboarding flow for new tenants
-- 👥 Client management
-- 👨‍💼 Staff management
-- 📅 Appointment scheduling
-- 💇 Services & pricing
-- 📦 Inventory management
-- 🛍️ Products catalog
-- 💰 Revenue analytics & reports
-- ⚙️ Branch & settings management
-- 📊 Dashboard with KPIs
+- OTP-based authentication
+- Guided onboarding flow
+- Client management with search/pagination
+- Staff management with roles
+- Appointment scheduling (calendar view)
+- Services & pricing catalog
+- Inventory management with low-stock alerts
+- Products catalog
+- Revenue analytics & KPI dashboard
+- Multi-branch support
+- Settings & configuration
 
 ### Backend API Modules
-- **Auth:** OTP generation, token management, session handling
-- **Owner:** Full CRUD for appointments, branches, clients, inventory, products, reports, revenue, services, settings, staff
+- **Auth Module:** OTP generation, JWT tokens, session management, rate limiting
+- **Owner Module:** Full CRUD for all tenant resources
+- **Subscription Module:** Plan limits enforcement
 
-## 🧪 Testing
+## Testing
 
-### Run E2E Tests (Tenant Dashboard)
+### Backend Tests
+```bash
+cd salonmind-services/salonmind-apis
+pnpm test                    # Run all tests
+pnpm test:integration        # Run integration tests
+```
+
+### E2E Tests (Tenant Dashboard)
 ```bash
 cd apps/salonmind-tenant-dashboard
 pnpm test           # Run all tests
@@ -119,40 +271,52 @@ pnpm test:headed    # Run with browser visible
 pnpm test:report    # View test report
 ```
 
-## 📂 Environment Variables
+## Database Models
 
-Copy `.env.example` to `.env` in each app/service directory and configure:
+| Model | Description |
+|-------|-------------|
+| User | User accounts (owner, staff, admin) |
+| Tenant | Salon organization |
+| Branch | Salon locations |
+| TenantStaff | Staff members |
+| Client | Customer profiles |
+| Appointment | Booking records |
+| Service | Service catalog |
+| Product | Product catalog |
+| Inventory | Stock tracking |
+| TenantSubscription | Active subscriptions |
+| SubscriptionPlan | Available plans |
+| Session | Auth sessions |
+| RefreshToken | Token storage |
+| OtpChallenge | OTP verification |
 
-```bash
-# API
-MONGODB_URI=mongodb://localhost:27017/salonmind
-JWT_SECRET=your-secret-key
-PORT=5000
-
-# Frontend Apps
-VITE_API_URL=http://localhost:5000/api
-```
-
-## 🌿 Git Branches
+## Git Workflow
 
 | Branch | Purpose |
 |--------|---------|
 | `main` | Production-ready code |
-| `dev`  | Active development |
-| `stg`  | Staging environment |
-| `prod` | Production deployment |
+| `dev` | Active development |
+| `stg` | Staging environment |
 
-## 📜 Scripts
+## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Start all apps in development mode |
+| `pnpm dev` | Start all apps in development |
 | `pnpm build` | Build all apps |
 | `pnpm lint` | Lint all apps |
 | `pnpm test` | Run tests |
 | `pnpm e2e` | Run E2E tests |
 
+## Environments
+
+| Environment | Database | API URL |
+|-------------|----------|---------|
+| Development | salonmind-dev | localhost:5000 |
+| Staging | salonmind-stg | stg-api.salonmind.com |
+| Production | salonmind | api.salonmind.com |
+
 ---
 
-**Developer:** Kapish Pandey  
-**Last Updated:** January 2026
+**Developer:** Kapish Pandey
+**Last Updated:** February 2026
