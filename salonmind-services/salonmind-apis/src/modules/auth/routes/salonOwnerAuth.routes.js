@@ -4,12 +4,18 @@ const {
   authenticate,
   restrictToScope,
 } = require("../../../middleware/auth");
+const {
+  otpSendLimiter,
+  otpVerifyLimiter,
+  tokenRefreshLimiter,
+  generalAuthLimiter,
+} = require("../../../middleware/rateLimiter");
 
-router.post("/otp/send", controller.sendOtp);
-router.post("/otp/resend", controller.resendOtp);
-router.post("/otp/verify", controller.verifyOtp);
-router.post("/token/refresh", controller.refreshToken);
-router.post("/logout", controller.logout);
+router.post("/otp/send", otpSendLimiter, controller.sendOtp);
+router.post("/otp/resend", otpSendLimiter, controller.resendOtp);
+router.post("/otp/verify", otpVerifyLimiter, controller.verifyOtp);
+router.post("/token/refresh", tokenRefreshLimiter, controller.refreshToken);
+router.post("/logout", generalAuthLimiter, controller.logout);
 
 router.get(
   "/me",

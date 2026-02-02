@@ -54,13 +54,14 @@ async function createChallenge({ phone, surface, meta }) {
     meta,
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[OTP:${surface}] ${normalizedPhone} code: ${otp}`);
-  }
+  // OTP code is intentionally NOT logged for security reasons
+  // In development, use the test OTP code via OTP_TEST_CODE env variable
 
   return {
     challengeId: challenge.challengeId,
     expiresIn: env.otpTtlMs,
+    // Return OTP only in test environment for automated testing
+    ...(process.env.NODE_ENV === "test" && { _testOtp: otp }),
   };
 }
 
@@ -139,13 +140,13 @@ async function resendChallenge({ challengeId, surface }) {
     meta: existing.meta,
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[OTP:${existing.surface}] ${existing.phone} code: ${otp}`);
-  }
+  // OTP code is intentionally NOT logged for security reasons
 
   return {
     challengeId: newChallenge.challengeId,
     expiresIn: env.otpTtlMs,
+    // Return OTP only in test environment for automated testing
+    ...(process.env.NODE_ENV === "test" && { _testOtp: otp }),
   };
 }
 

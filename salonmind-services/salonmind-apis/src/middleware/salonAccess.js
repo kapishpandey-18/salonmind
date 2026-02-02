@@ -15,18 +15,16 @@ const ensureSalonAccess = async (req, res, next) => {
       throw ApiError.unauthorized("Authentication required");
     }
 
-    // Get salon ID from different sources
+    // Get salon ID from trusted sources only
+    // SECURITY: Never trust client-provided salon ID in request body
+    // to prevent unauthorized cross-tenant data access
     let salonId = null;
 
     // 1. From URL params (e.g., /salons/:salonId/appointments)
     if (req.params.salonId) {
       salonId = req.params.salonId;
     }
-    // 2. From request body (for create operations)
-    else if (req.body.salon) {
-      salonId = req.body.salon;
-    }
-    // 3. From user's assigned salon
+    // 2. From user's assigned salon (trusted source)
     else if (user.salon) {
       salonId = user.salon._id || user.salon;
     }
