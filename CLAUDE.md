@@ -87,23 +87,33 @@ All owner APIs scope data by:
 
 ## Development Commands
 
+This is a **pnpm monorepo**. Run commands from the project root or package directories.
+
+### From Root
+
+```bash
+pnpm install              # Install all dependencies
+pnpm --filter salonmind-backend dev    # Start backend
+pnpm --filter salonmind-tenant-dashboard dev  # Start frontend
+```
+
 ### Backend (`salonmind-services/salonmind-apis/`)
 
 ```bash
-npm run dev        # Start dev server with tsx watch
-npm run build      # Compile TypeScript to dist/
-npm run start      # Run compiled code
-npm test           # Run Jest tests
-npm run typecheck  # Type check without emit
+pnpm dev           # Start dev server with tsx watch
+pnpm build         # Compile TypeScript to dist/
+pnpm start         # Run compiled code
+pnpm test          # Run Jest tests
+pnpm typecheck     # Type check without emit
 ```
 
 ### Frontend (`apps/salonmind-tenant-dashboard/`)
 
 ```bash
-npm run dev        # Start Vite dev server
-npm run build      # Production build
-npm run preview    # Preview production build
-npm run lint       # ESLint check
+pnpm dev           # Start Vite dev server
+pnpm build         # Production build
+pnpm preview       # Preview production build
+pnpm lint          # ESLint check
 ```
 
 ---
@@ -196,13 +206,13 @@ Backend uses Jest with MongoDB Memory Server for integration tests.
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run specific test file
-npm test -- auth.integration.spec.ts
+pnpm test -- auth.integration.spec.ts
 
 # Run with coverage
-npm test -- --coverage
+pnpm test -- --coverage
 ```
 
 Key test files:
