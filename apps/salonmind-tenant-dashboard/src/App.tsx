@@ -1,9 +1,10 @@
 import { lazy, Suspense } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Toaster } from "./components/ui/sonner";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Lazy load main components for better performance
-const Login = lazy(() => import("./pages/Login"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 
@@ -38,12 +39,20 @@ function AppContent() {
   // 1. Not authenticated → Show Login
   // 2. Authenticated but not onboarded → Show Onboarding
   // 3. Authenticated and onboarded → Show Dashboard
+
+  // LoginPage has its own full-screen styling, don't wrap it
+  if (!isAuthenticated) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <LoginPage />
+      </Suspense>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Suspense fallback={<LoadingSpinner />}>
-        {!isAuthenticated ? (
-          <Login />
-        ) : !user?.isOnboarded ? (
+        {!user?.isOnboarded ? (
           <Onboarding
             onComplete={handleOnboardingComplete}
             phoneNumber={user?.phoneNumber || ""}
@@ -58,9 +67,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-      <Toaster />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+        <Toaster />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
