@@ -1,0 +1,1101 @@
+paths:
+  # Context & Onboarding
+  /v1/owner/me/context:
+    get:
+      tags:
+        - Owner - Context
+      summary: Get tenant context
+      description: Returns the current user's tenant, active branch, and subscription info
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+      responses:
+        "200":
+          description: Tenant context
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      tenant:
+                        $ref: "#/components/schemas/Tenant"
+                      activeBranch:
+                        $ref: "#/components/schemas/Branch"
+                      subscription:
+                        type: object
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /v1/owner/onboarding/salon-info:
+    put:
+      tags:
+        - Owner - Context
+      summary: Update salon info (onboarding step 1)
+      description: Set basic salon information during onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: Glamour Salon
+                logoUrl:
+                  type: string
+                  format: uri
+                contact:
+                  type: object
+                  properties:
+                    phone:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                address:
+                  type: object
+                  properties:
+                    street:
+                      type: string
+                    city:
+                      type: string
+                    state:
+                      type: string
+                    zipCode:
+                      type: string
+                    country:
+                      type: string
+      responses:
+        "200":
+          description: Salon info updated
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /v1/owner/onboarding/plan:
+    post:
+      tags:
+        - Owner - Context
+      summary: Select subscription plan (onboarding step 2)
+      description: Choose a subscription plan and initiate payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - planCode
+              properties:
+                planCode:
+                  type: string
+                  enum: [BASIC, PROFESSIONAL, ENTERPRISE]
+                  example: BASIC
+      responses:
+        "200":
+          description: Plan selected, payment order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      orderId:
+                        type: string
+                      amount:
+                        type: number
+                      currency:
+                        type: string
+        "400":
+          description: Invalid plan code
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /v1/owner/onboarding/complete:
+    post:
+      tags:
+        - Owner - Context
+      summary: Complete onboarding (onboarding step 3)
+      description: Verify payment and activate subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - paymentId
+                - signature
+              properties:
+                paymentId:
+                  type: string
+                signature:
+                  type: string
+      responses:
+        "200":
+          description: Onboarding completed, subscription activated
+        "400":
+          description: Payment verification failed
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  # Branches
+  /v1/owner/branches:
+    get:
+      tags:
+        - Owner - Branches
+      summary: List all branches
+      description: Get all branches for the tenant
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Branch"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+    post:
+      tags:
+        - Owner - Branches
+      summary: Create a branch
+      description: |
+        Create a new branch for the tenant.
+        Subject to subscription plan limits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBranchRequest"
+      responses:
+        "201":
+          description: Branch created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/Branch"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          description: Branch limit reached for subscription plan
+
+  /v1/owner/branches/{id}:
+    get:
+      tags:
+        - Owner - Branches
+      summary: Get branch by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Branch details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/Branch"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    patch:
+      tags:
+        - Owner - Branches
+      summary: Update branch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBranchRequest"
+      responses:
+        "200":
+          description: Branch updated
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    delete:
+      tags:
+        - Owner - Branches
+      summary: Delete branch
+      description: Soft delete a branch. Cannot delete the default branch.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Branch deleted
+        "400":
+          description: Cannot delete default branch
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /v1/owner/branches/active:
+    post:
+      tags:
+        - Owner - Branches
+      summary: Set active branch
+      description: Set the user's active branch for subsequent operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - branchId
+              properties:
+                branchId:
+                  type: string
+      responses:
+        "200":
+          description: Active branch updated
+        "404":
+          description: Branch not found
+
+  # Staff
+  /v1/owner/staff:
+    get:
+      tags:
+        - Owner - Staff
+      summary: List staff members
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [manager, staff]
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of staff
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Staff"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags:
+        - Owner - Staff
+      summary: Add staff member
+      description: |
+        Create a new staff member.
+        Subject to subscription plan limits.
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStaffRequest"
+      responses:
+        "201":
+          description: Staff created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/Staff"
+        "403":
+          description: Staff limit reached
+
+  /v1/owner/staff/{id}:
+    get:
+      tags:
+        - Owner - Staff
+      summary: Get staff by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Staff details
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    patch:
+      tags:
+        - Owner - Staff
+      summary: Update staff
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStaffRequest"
+      responses:
+        "200":
+          description: Staff updated
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    delete:
+      tags:
+        - Owner - Staff
+      summary: Deactivate staff
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Staff deactivated
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  # Services
+  /v1/owner/services:
+    get:
+      tags:
+        - Owner - Services
+      summary: List services
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [haircare, skincare, nailcare, makeup, massage, other]
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Service"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags:
+        - Owner - Services
+      summary: Create service
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceRequest"
+      responses:
+        "201":
+          description: Service created
+
+  /v1/owner/services/{id}:
+    get:
+      tags:
+        - Owner - Services
+      summary: Get service by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Service details
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    patch:
+      tags:
+        - Owner - Services
+      summary: Update service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceRequest"
+      responses:
+        "200":
+          description: Service updated
+
+    delete:
+      tags:
+        - Owner - Services
+      summary: Delete service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Service deleted
+
+  # Clients
+  /v1/owner/clients:
+    get:
+      tags:
+        - Owner - Clients
+      summary: List clients
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/SearchParam"
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Client"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags:
+        - Owner - Clients
+      summary: Create client
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+      responses:
+        "201":
+          description: Client created
+        "403":
+          description: Client limit reached
+
+  /v1/owner/clients/{id}:
+    get:
+      tags:
+        - Owner - Clients
+      summary: Get client by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client details
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    patch:
+      tags:
+        - Owner - Clients
+      summary: Update client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+      responses:
+        "200":
+          description: Client updated
+
+    delete:
+      tags:
+        - Owner - Clients
+      summary: Delete client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client deleted
+
+  # Appointments
+  /v1/owner/appointments:
+    get:
+      tags:
+        - Owner - Appointments
+      summary: List appointments
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
+        - name: staffId
+          in: query
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Appointment"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags:
+        - Owner - Appointments
+      summary: Create appointment
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppointmentRequest"
+      responses:
+        "201":
+          description: Appointment created
+
+  /v1/owner/appointments/{id}:
+    get:
+      tags:
+        - Owner - Appointments
+      summary: Get appointment by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Appointment details
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    patch:
+      tags:
+        - Owner - Appointments
+      summary: Update appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                staffId:
+                  type: string
+                dateTime:
+                  type: string
+                  format: date-time
+                status:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: Appointment updated
+
+    delete:
+      tags:
+        - Owner - Appointments
+      summary: Cancel appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Appointment cancelled
+
+  # Products
+  /v1/owner/products:
+    get:
+      tags:
+        - Owner - Products
+      summary: List products
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags:
+        - Owner - Products
+      summary: Create product
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created
+
+  /v1/owner/products/{id}:
+    get:
+      tags:
+        - Owner - Products
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product details
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+    patch:
+      tags:
+        - Owner - Products
+      summary: Update product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "200":
+          description: Product updated
+
+    delete:
+      tags:
+        - Owner - Products
+      summary: Delete product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product deleted
+
+  # Inventory
+  /v1/owner/inventory:
+    get:
+      tags:
+        - Owner - Inventory
+      summary: List inventory items
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - name: lowStock
+          in: query
+          description: Filter items below minimum stock
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of inventory items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InventoryItem"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags:
+        - Owner - Inventory
+      summary: Add inventory item
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - currentStock
+              properties:
+                productId:
+                  type: string
+                currentStock:
+                  type: integer
+                minStock:
+                  type: integer
+                maxStock:
+                  type: integer
+      responses:
+        "201":
+          description: Inventory item added
+
+  /v1/owner/inventory/{id}:
+    patch:
+      tags:
+        - Owner - Inventory
+      summary: Update inventory stock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentStock:
+                  type: integer
+                minStock:
+                  type: integer
+                adjustment:
+                  type: integer
+                  description: Add/subtract from current stock
+      responses:
+        "200":
+          description: Inventory updated
+
+  # Revenue
+  /v1/owner/revenue:
+    get:
+      tags:
+        - Owner - Revenue
+      summary: Get revenue analytics
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: day
+      responses:
+        "200":
+          description: Revenue data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      totalRevenue:
+                        type: number
+                      totalAppointments:
+                        type: integer
+                      averageTicket:
+                        type: number
+                      revenueByDay:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                            revenue:
+                              type: number
+                            appointments:
+                              type: integer
+                      topServices:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            service:
+                              type: string
+                            revenue:
+                              type: number
+                            count:
+                              type: integer
+
+  # Reports
+  /v1/owner/reports:
+    get:
+      tags:
+        - Owner - Reports
+      summary: Get business reports
+      parameters:
+        - $ref: "#/components/parameters/BranchId"
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [summary, staff-performance, client-retention, service-analysis]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+
+  # Settings
+  /v1/owner/settings:
+    get:
+      tags:
+        - Owner - Settings
+      summary: Get salon settings
+      responses:
+        "200":
+          description: Salon settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/SalonSettings"
+
+    put:
+      tags:
+        - Owner - Settings
+      summary: Update salon settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalonSettings"
+      responses:
+        "200":
+          description: Settings updated
+
+  # Plans
+  /v1/owner/plans:
+    get:
+      tags:
+        - Owner - Plans
+      summary: List subscription plans
+      description: Get all available subscription plans
+      security: []
+      responses:
+        "200":
+          description: List of plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SubscriptionPlan"

@@ -1,0 +1,429 @@
+paths:
+  # Salon Owner Auth
+  /v1/auth/salon-owner/otp/send:
+    post:
+      tags:
+        - Auth - Salon Owner
+      summary: Send OTP to salon owner
+      description: |
+        Initiates OTP-based authentication for salon owners.
+
+        **Rate Limit:** 5 requests per 15 minutes per phone number
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpSendRequest"
+      responses:
+        "200":
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpSendResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/salon-owner/otp/verify:
+    post:
+      tags:
+        - Auth - Salon Owner
+      summary: Verify OTP and get tokens
+      description: |
+        Verifies the OTP and returns access + refresh tokens.
+        Creates a new user if phone number is not registered.
+
+        **Rate Limit:** 10 requests per 15 minutes per IP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpVerifyResponse"
+        "400":
+          description: Invalid OTP or challenge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/salon-owner/otp/resend:
+    post:
+      tags:
+        - Auth - Salon Owner
+      summary: Resend OTP
+      description: |
+        Generates a new OTP and invalidates the previous challenge.
+
+        **Rate Limit:** 5 requests per 15 minutes per phone
+        **Max Resends:** 3 per challenge
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challengeId
+              properties:
+                challengeId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: New OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpSendResponse"
+        "400":
+          description: Challenge not found or max resends exceeded
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/salon-owner/token/refresh:
+    post:
+      tags:
+        - Auth - Salon Owner
+      summary: Refresh access token
+      description: |
+        Exchange a valid refresh token for new access + refresh tokens.
+        Old refresh token is invalidated (rotation).
+
+        **Rate Limit:** 30 requests per 15 minutes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        "200":
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+        "401":
+          description: Invalid or expired refresh token
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/salon-owner/logout:
+    post:
+      tags:
+        - Auth - Salon Owner
+      summary: Logout and revoke session
+      description: Revokes the current session and all associated tokens
+      responses:
+        "200":
+          description: Logged out successfully
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /v1/auth/salon-owner/me:
+    get:
+      tags:
+        - Auth - Salon Owner
+      summary: Get current user
+      description: Returns the authenticated user's profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  # Admin Auth
+  /v1/auth/admin/otp/send:
+    post:
+      tags:
+        - Auth - Admin
+      summary: Send OTP to admin
+      description: |
+        Initiates OTP-based authentication for platform admins.
+        Phone number must be in the admin allowlist.
+
+        **Rate Limit:** 5 requests per 15 minutes per phone
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpSendRequest"
+      responses:
+        "200":
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpSendResponse"
+        "403":
+          description: Phone not in admin allowlist
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/admin/otp/verify:
+    post:
+      tags:
+        - Auth - Admin
+      summary: Verify admin OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpVerifyResponse"
+        "400":
+          description: Invalid OTP or challenge
+        "403":
+          description: Phone not in admin allowlist
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/admin/otp/resend:
+    post:
+      tags:
+        - Auth - Admin
+      summary: Resend admin OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challengeId
+              properties:
+                challengeId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: New OTP sent
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/admin/token/refresh:
+    post:
+      tags:
+        - Auth - Admin
+      summary: Refresh admin access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        "200":
+          description: New tokens issued
+        "401":
+          description: Invalid refresh token
+
+  /v1/auth/admin/logout:
+    post:
+      tags:
+        - Auth - Admin
+      summary: Admin logout
+      responses:
+        "200":
+          description: Logged out successfully
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /v1/auth/admin/me:
+    get:
+      tags:
+        - Auth - Admin
+      summary: Get admin user
+      responses:
+        "200":
+          description: Admin profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  # Employee Auth
+  /v1/auth/salon-employee/otp/send:
+    post:
+      tags:
+        - Auth - Employee
+      summary: Send OTP to employee
+      description: |
+        Initiates OTP-based authentication for salon employees.
+        Employee must exist and be active in a tenant.
+
+        **Rate Limit:** 5 requests per 15 minutes per phone
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpSendRequest"
+      responses:
+        "200":
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpSendResponse"
+        "403":
+          description: Employee not found or inactive
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/salon-employee/otp/verify:
+    post:
+      tags:
+        - Auth - Employee
+      summary: Verify employee OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtpVerifyRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpVerifyResponse"
+        "400":
+          description: Invalid OTP
+        "403":
+          description: Employee inactive
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/salon-employee/otp/resend:
+    post:
+      tags:
+        - Auth - Employee
+      summary: Resend employee OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challengeId
+              properties:
+                challengeId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: New OTP sent
+        "429":
+          $ref: "#/components/responses/RateLimitError"
+
+  /v1/auth/salon-employee/token/refresh:
+    post:
+      tags:
+        - Auth - Employee
+      summary: Refresh employee access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        "200":
+          description: New tokens issued
+        "401":
+          description: Invalid refresh token
+
+  /v1/auth/salon-employee/logout:
+    post:
+      tags:
+        - Auth - Employee
+      summary: Employee logout
+      responses:
+        "200":
+          description: Logged out successfully
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /v1/auth/salon-employee/me:
+    get:
+      tags:
+        - Auth - Employee
+      summary: Get employee user
+      responses:
+        "200":
+          description: Employee profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
