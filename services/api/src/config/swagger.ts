@@ -41,7 +41,7 @@ SalonMind provides a comprehensive REST API for managing salon operations includ
     },
     servers: [
       {
-        url: "http://localhost:5000",
+        url: "http://localhost:5009",
         description: "Development server",
       },
       {
