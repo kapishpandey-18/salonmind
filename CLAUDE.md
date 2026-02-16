@@ -9,9 +9,12 @@ SalonMind is a multi-tenant SaaS platform for salon management. It enables salon
 ```
 salonmind/
 ├── apps/
-│   └── salonmind-tenant-dashboard/   # React frontend (Vite + TypeScript)
-└── salonmind-services/
-    └── salonmind-apis/               # Node.js backend (Express + TypeScript)
+│   ├── owner-dashboard/      # Salon owners manage business (React + Vite)
+│   ├── employee-app/         # Staff view schedules, tasks (React + Vite)
+│   └── admin-dashboard/      # Platform admin panel (React + Vite)
+├── services/
+│   └── api/                  # Backend API (Express + TypeScript)
+└── packages/                 # Shared libraries (future)
 ```
 
 ### Tech Stack
@@ -92,12 +95,14 @@ This is a **pnpm monorepo**. Run commands from the project root or package direc
 ### From Root
 
 ```bash
-pnpm install              # Install all dependencies
-pnpm --filter salonmind-backend dev    # Start backend
-pnpm --filter salonmind-tenant-dashboard dev  # Start frontend
+pnpm install                              # Install all dependencies
+pnpm --filter @salonmind/api dev          # Start backend API
+pnpm --filter @salonmind/owner-dashboard dev    # Start owner dashboard
+pnpm --filter @salonmind/admin-dashboard dev    # Start admin dashboard
+pnpm --filter @salonmind/employee-app dev       # Start employee app
 ```
 
-### Backend (`salonmind-services/salonmind-apis/`)
+### Backend (`services/api/`)
 
 ```bash
 pnpm dev           # Start dev server with tsx watch
@@ -107,7 +112,7 @@ pnpm test          # Run Jest tests
 pnpm typecheck     # Type check without emit
 ```
 
-### Frontend (`apps/salonmind-tenant-dashboard/`)
+### Frontend Apps (`apps/owner-dashboard/`, `apps/admin-dashboard/`, `apps/employee-app/`)
 
 ```bash
 pnpm dev           # Start Vite dev server
