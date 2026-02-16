@@ -7,19 +7,19 @@ A comprehensive AI-powered salon management SaaS platform for salon owners, staf
 ```
 salonmind/
 ├── apps/
-│   ├── salonmind-tenant-dashboard/   # Salon owner dashboard (React + TypeScript)
-│   ├── salonmind-dashboard/          # Platform admin console
-│   └── salonmind-people/             # Employee mobile app (Capacitor + React)
-├── salonmind-services/
-│   └── salonmind-apis/               # Backend REST API (Node.js + Express + MongoDB)
+│   ├── owner-dashboard/     # Salon owner dashboard (React + TypeScript) [@salonmind/owner-dashboard]
+│   ├── admin-dashboard/     # Platform admin console [@salonmind/admin-dashboard]
+│   └── employee-app/        # Employee mobile app (Capacitor + React) [@salonmind/employee-app]
+├── services/
+│   └── api/                 # Backend REST API (Node.js + Express + MongoDB) [@salonmind/api]
 ├── packages/
-│   ├── auth-client/                  # Shared authentication client library
-│   ├── ui/                           # Shared UI components (planned)
-│   ├── config/                       # Shared configurations (planned)
-│   ├── utils/                        # Shared utilities (planned)
-│   └── ai/                           # AI helpers (planned)
-├── docs/                             # Documentation
-└── turbo.json                        # Turborepo configuration
+│   ├── auth-client/         # Shared authentication client library [@salonmind/auth-client]
+│   ├── ui/                  # Shared UI components (planned)
+│   ├── config/              # Shared configurations (planned)
+│   ├── utils/               # Shared utilities (planned)
+│   └── ai/                  # AI helpers (planned)
+├── docs/                    # Documentation
+└── turbo.json               # Turborepo configuration
 ```
 
 ## Quick Start
@@ -39,7 +39,7 @@ pnpm install
 Each environment has its own configuration:
 
 ```bash
-# Backend (salonmind-services/salonmind-apis/)
+# Backend (services/api/)
 .env.development    # Development environment
 .env.staging        # Staging environment
 .env.production     # Production environment
@@ -71,10 +71,10 @@ pnpm dev
 
 | App | Command | Port |
 |-----|---------|------|
-| Tenant Dashboard | `cd apps/salonmind-tenant-dashboard && pnpm dev` | 3000 |
-| Admin Dashboard | `cd apps/salonmind-dashboard && pnpm dev` | 3010 |
-| Employee App | `cd apps/salonmind-people && pnpm dev` | 3020 |
-| Backend API | `cd salonmind-services/salonmind-apis && pnpm dev` | 5000 |
+| Owner Dashboard | `pnpm --filter @salonmind/owner-dashboard dev` | 3000 |
+| Admin Dashboard | `pnpm --filter @salonmind/admin-dashboard dev` | 3010 |
+| Employee App | `pnpm --filter @salonmind/employee-app dev` | 3020 |
+| Backend API | `pnpm --filter @salonmind/api dev` | 5000 |
 
 ## Tech Stack
 
@@ -235,7 +235,7 @@ const storage = createCapacitorTokenStorage();
 
 ## Features
 
-### Tenant Dashboard (Owner App)
+### Owner Dashboard
 - OTP-based authentication
 - Guided onboarding flow
 - Client management with search/pagination
@@ -257,18 +257,16 @@ const storage = createCapacitorTokenStorage();
 
 ### Backend Tests
 ```bash
-cd salonmind-services/salonmind-apis
-pnpm test                    # Run all tests
-pnpm test:integration        # Run integration tests
+pnpm --filter @salonmind/api test                # Run all tests
+pnpm --filter @salonmind/api test:integration    # Run integration tests
 ```
 
-### E2E Tests (Tenant Dashboard)
+### E2E Tests (Owner Dashboard)
 ```bash
-cd apps/salonmind-tenant-dashboard
-pnpm test           # Run all tests
-pnpm test:ui        # Interactive UI mode
-pnpm test:headed    # Run with browser visible
-pnpm test:report    # View test report
+pnpm --filter @salonmind/owner-dashboard test           # Run all tests
+pnpm --filter @salonmind/owner-dashboard test:ui        # Interactive UI mode
+pnpm --filter @salonmind/owner-dashboard test:headed    # Run with browser visible
+pnpm --filter @salonmind/owner-dashboard test:report    # View test report
 ```
 
 ## Database Models
